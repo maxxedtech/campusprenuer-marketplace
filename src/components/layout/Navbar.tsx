@@ -20,9 +20,9 @@ const Navbar = () => {
         {/* LOGO */}
         <Link to="/" className="flex items-center">
           <img
-            src="/logo.png"
-            alt="CampusPreneur"
-            className="h-20 w-auto scale-10"
+  src="/logo.png"
+  alt="CampusPreneur"
+  className="h-14 w-auto object-contain"
           />
         </Link>
 
