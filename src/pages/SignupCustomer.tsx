@@ -1,137 +1,112 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { Input } from "@/components/ui/input";
-import { MapPin, ShoppingBag, UserPlus } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { LoadingButton } from "@/components/ui/LoadingButton";
+import { Link, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+
+type StoredUser = {
+  name: string;
+  role: "customer" | "entrepreneur" | "admin";
+  email?: string;
+};
 
 const SignupCustomer = () => {
-  const { signup } = useAuth();
+  const navigate = useNavigate();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [password, setPassword] = useState(""); // optional if you have backend
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
 
     try {
-      await signup(name, email, password, "customer");
-    } catch (err: any) {
-      setError(err.message || "Signup failed");
+      /**
+       * ✅ OPTION A (Recommended): Call your backend signup endpoint here.
+       * Replace this block with your API call.
+       *
+       * Example:
+       * const res = await api.post("/auth/signup", { name, email, password, role: "customer" });
+       * const token = res.data.token;
+       * const userFromApi = res.data.user;
+       */
+
+      // ✅ Works immediately: store locally (for UI testing)
+      const user: StoredUser = { name: name.trim(), role: "customer", email: email.trim() };
+      localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("token", "local-demo-token");
+
+      // also store preferredRole so login page can show it (optional)
+      localStorage.setItem("preferredRole", "customer");
+
+      navigate("/marketplace");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 gradient-hero">
-      <div className="card-soft w-full max-w-sm animate-fade-in">
-        {/* Logo */}
-        <div className="flex items-center gap-2 mb-6">
-          <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center">
-            <MapPin className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <span className="font-display text-xl font-bold">CampusPrenue</span>
-        </div>
-
-        {/* Badge */}
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary/30 text-xs font-medium mb-4">
-          <ShoppingBag className="w-3 h-3" />
-          Customer Account
-        </div>
-
-        <h1 className="text-xl font-display font-bold">Join CampusPrenue</h1>
-
-        <p className="text-sm text-muted-foreground mt-1">
-          Discover local products & services
+    <div className="min-h-[calc(100vh-80px)] flex items-center justify-center px-6 py-10">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <h1 className="text-2xl font-semibold text-foreground">Create a Customer account</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Buy and connect with student entrepreneurs.
         </p>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          {/* Name */}
+        <form onSubmit={handleSignup} className="mt-6 space-y-4">
           <div>
-            <label className="text-xs font-medium text-muted-foreground">
-              Full Name
-            </label>
-            <Input
+            <label className="text-sm font-medium text-foreground">Full name</label>
+            <input
               value={name}
               onChange={(e) => setName(e.target.value)}
+              className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+              placeholder="Dave Adamson"
               required
-              className="mt-1"
             />
           </div>
 
-          {/* Email */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground">
-              Email
-            </label>
-            <Input
-              type="email"
+            <label className="text-sm font-medium text-foreground">Email</label>
+            <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              type="email"
+              className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+              placeholder="you@example.com"
               required
-              className="mt-1"
             />
           </div>
 
-          {/* Password */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground">
-              Password
-            </label>
-
-            <div className="relative mt-1">
-              <Input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="pr-16"
-              />
-
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
-              >
-                {showPassword ? "Hide" : "Show"}
-              </button>
-            </div>
+            <label className="text-sm font-medium text-foreground">Password</label>
+            <input
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              type="password"
+              className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+              placeholder="••••••••"
+              required
+            />
           </div>
 
-          {error && <p className="text-xs text-destructive">{error}</p>}
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Creating account..." : "Sign up as Customer"}
+          </Button>
 
-          <LoadingButton type="submit" loading={loading} className="gap-2">
-            <UserPlus className="w-4 h-4" />
-            Create Account
-          </LoadingButton>
+          <div className="text-sm text-muted-foreground">
+            Want to sell instead?{" "}
+            <Link to="/signup-entrepreneur" className="text-primary hover:underline">
+              Sign up as Entrepreneur
+            </Link>
+          </div>
+
+          <div className="text-sm text-muted-foreground">
+            Already have an account?{" "}
+            <Link to="/login" className="text-primary hover:underline">
+              Login
+            </Link>
+          </div>
         </form>
-
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
-          <Link
-            to="/login/customer"
-            className="text-foreground font-medium hover:underline"
-          >
-            Log in
-          </Link>
-        </p>
-
-        <p className="text-center text-xs text-muted-foreground mt-2">
-          Want to sell?{" "}
-          <Link
-            to="/signup/entrepreneur"
-            className="text-foreground font-medium hover:underline"
-          >
-            Sign up as entrepreneur
-          </Link>
-        </p>
       </div>
     </div>
   );
