@@ -17,7 +17,6 @@ const Navbar = () => {
   return (
     <nav className="sticky top-0 z-50 bg-card/80 backdrop-blur-md border-b border-border">
       <div className="max-w-7xl mx-auto flex items-center justify-between h-16 px-6">
-
         {/* LOGO */}
         <Link to="/" className="flex items-center">
           <img
@@ -52,15 +51,14 @@ const Navbar = () => {
             Login
           </Button>
 
-          <Button size="sm">
-            Get Started
-          </Button>
+          <Button size="sm">Get Started</Button>
         </div>
 
         {/* MOBILE MENU BUTTON */}
         <button
           className="md:hidden"
           onClick={() => setMobileOpen(!mobileOpen)}
+          aria-label="Toggle menu"
         >
           {mobileOpen ? <X /> : <Menu />}
         </button>
@@ -87,9 +85,7 @@ const Navbar = () => {
               Login
             </Button>
 
-            <Button>
-              Get Started
-            </Button>
+            <Button>Get Started</Button>
           </div>
         </div>
       )}
