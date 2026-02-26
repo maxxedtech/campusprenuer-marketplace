@@ -1,11 +1,55 @@
-import { Link, useLocation } from "react-router-dom";
-import { ShoppingBag, MessageCircle, Menu, X, User } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { ShoppingBag, MessageCircle, Menu, X, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+type Role = "entrepreneur" | "customer" | "admin" | "unknown";
+
+type StoredUser = {
+  name?: string;
+  fullName?: string;
+  username?: string;
+  email?: string;
+  role?: Role;
+};
+
+const AUTH_CHANGED_EVENT = "auth-changed";
+
+function readUserFromStorage() {
+  const token = localStorage.getItem("token");
+  const userRaw = localStorage.getItem("user");
+
+  let user: StoredUser | null = null;
+  if (userRaw) {
+    try {
+      user = JSON.parse(userRaw);
+    } catch {
+      user = null;
+    }
+  }
+
+  const isLoggedIn = Boolean(token && user);
+  const name =
+    user?.name || user?.fullName || user?.username || user?.email || "My Account";
+  const role = (user?.role as Role) || "unknown";
+
+  return { isLoggedIn, name, role };
+}
+
+function roleLabel(role: Role) {
+  if (role === "entrepreneur") return "Entrepreneur";
+  if (role === "customer") return "Customer";
+  if (role === "admin") return "Admin";
+  return "Account";
+}
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [auth, setAuth] = useState(() => readUserFromStorage());
+
   const location = useLocation();
+  const navigate = useNavigate();
 
   const navLinks = [
     { to: "/marketplace", label: "Marketplace", icon: ShoppingBag },
@@ -14,16 +58,43 @@ const Navbar = () => {
 
   const isActive = (path: string) => location.pathname.startsWith(path);
 
+  useEffect(() => {
+    // initial
+    setAuth(readUserFromStorage());
+
+    // update on custom auth event (same tab)
+    const onAuthChanged = () => setAuth(readUserFromStorage());
+    window.addEventListener(AUTH_CHANGED_EVENT, onAuthChanged);
+
+    // update on storage change (other tabs)
+    const onStorage = () => setAuth(readUserFromStorage());
+    window.addEventListener("storage", onStorage);
+
+    return () => {
+      window.removeEventListener(AUTH_CHANGED_EVENT, onAuthChanged);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
+  useEffect(() => {
+    // close menus on route change
+    setMobileOpen(false);
+    setAccountOpen(false);
+  }, [location.pathname]);
+
+  const logout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
+    navigate("/login");
+  };
+
   return (
     <nav className="sticky top-0 z-50 bg-card/80 backdrop-blur-md border-b border-border">
-      <div className="max-w-7xl mx-auto flex items-center justify-between h-16 px-6">
+      <div className="max-w-7xl mx-auto flex items-center justify-between h-20 px-6">
         {/* LOGO */}
         <Link to="/" className="flex items-center">
-          <img
-  src="/logo.png"
-  alt="CampusPreneur"
-  className="h-14 w-auto object-contain"
-          />
+          <img src="/logo.png" alt="CampusPreneur" className="h-14 w-auto" />
         </Link>
 
         {/* DESKTOP NAV */}
@@ -46,12 +117,59 @@ const Navbar = () => {
 
         {/* RIGHT SIDE */}
         <div className="hidden md:flex items-center gap-3">
-          <Button variant="ghost" size="sm">
-            <User className="w-4 h-4 mr-2" />
-            Login
-          </Button>
+          {!auth.isLoggedIn ? (
+            <>
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/login">
+                  <User className="w-4 h-4 mr-2" />
+                  Login
+                </Link>
+              </Button>
 
-          <Button size="sm">Get Started</Button>
+              <Button size="sm" asChild>
+                <Link to="/get-started">Get Started</Link>
+              </Button>
+            </>
+          ) : (
+            <div className="relative">
+              <button
+                className="flex items-center gap-3 rounded-full border border-border px-4 py-2 hover:bg-muted transition"
+                onClick={() => setAccountOpen((v) => !v)}
+              >
+                <div className="flex flex-col items-start leading-tight">
+                  <span className="text-sm font-medium text-foreground">
+                    {auth.name}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {roleLabel(auth.role)}
+                  </span>
+                </div>
+
+                <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
+                  {roleLabel(auth.role)}
+                </span>
+              </button>
+
+              {accountOpen && (
+                <div className="absolute right-0 mt-2 w-48 rounded-xl border border-border bg-card shadow-lg overflow-hidden">
+                  <Link
+                    to="/account"
+                    className="block px-4 py-3 text-sm hover:bg-muted"
+                  >
+                    My Account
+                  </Link>
+
+                  <button
+                    onClick={logout}
+                    className="w-full flex items-center gap-2 px-4 py-3 text-sm hover:bg-muted"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* MOBILE MENU BUTTON */}
@@ -80,12 +198,37 @@ const Navbar = () => {
               </Link>
             ))}
 
-            <Button variant="ghost">
-              <User className="w-4 h-4 mr-2" />
-              Login
-            </Button>
+            {!auth.isLoggedIn ? (
+              <>
+                <Button variant="ghost" asChild>
+                  <Link to="/login">
+                    <User className="w-4 h-4 mr-2" />
+                    Login
+                  </Link>
+                </Button>
+                <Button asChild>
+                  <Link to="/get-started">Get Started</Link>
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="rounded-xl border border-border p-3">
+                  <div className="text-sm font-medium">{auth.name}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {roleLabel(auth.role)}
+                  </div>
+                </div>
 
-            <Button>Get Started</Button>
+                <Button variant="ghost" asChild>
+                  <Link to="/account">My Account</Link>
+                </Button>
+
+                <Button variant="destructive" onClick={logout}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </Button>
+              </>
+            )}
           </div>
         </div>
       )}
