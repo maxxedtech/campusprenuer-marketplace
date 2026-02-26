@@ -16,19 +16,19 @@ const Navbar = () => {
 
   return (
     <nav className="sticky top-0 z-50 bg-card/80 backdrop-blur-md border-b border-border">
-      <div className="container mx-auto flex items-center justify-between h-14 px-4">
+      <div className="max-w-7xl mx-auto flex items-center justify-between h-16 px-6">
 
         {/* LOGO */}
         <Link to="/" className="flex items-center">
           <img
             src="/logo.png"
-            alt="Logo"
-            className="h-12 w-auto"
+            alt="CampusPreneur"
+            className="h-10 w-auto"
           />
         </Link>
 
         {/* DESKTOP NAV */}
-        <div className="hidden md:flex items-center gap-6">
+        <div className="hidden md:flex items-center gap-8">
           {navLinks.map(({ to, label, icon: Icon }) => (
             <Link
               key={to}
@@ -39,7 +39,7 @@ const Navbar = () => {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Icon className="w-5 h-5" />
+              <Icon className="w-4 h-4" />
               {label}
             </Link>
           ))}
