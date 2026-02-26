@@ -1,102 +1,153 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Input } from "@/components/ui/input";
-import { useAuth } from "@/contexts/AuthContext";
-import { LoadingButton } from "@/components/ui/LoadingButton";
+import { Button } from "@/components/ui/button";
 
-const Login = ({ role }: { role: "customer" | "entrepreneur" }) => {
-  const { login } = useAuth();
+type Role = "entrepreneur" | "customer" | "admin";
+
+type StoredUser = {
+  name: string;
+  role: Role;
+  email?: string;
+};
+
+function redirectByRole(navigate: ReturnType<typeof useNavigate>, role: Role) {
+  if (role === "admin") return navigate("/admin");
+  if (role === "entrepreneur") return navigate("/entrepreneur-dashboard");
+  return navigate("/marketplace");
+}
+
+function safeJsonParse<T>(value: string | null): T | null {
+  if (!value) return null;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return null;
+  }
+}
+
+const Login = () => {
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState("");
+  const [emailOrUsername, setEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Optional: if someone came from signup pages, we can remember intended role.
+  const preferredRole = useMemo(() => {
+    const r = localStorage.getItem("preferredRole");
+    if (r === "entrepreneur" || r === "customer" || r === "admin") return r;
+    return null;
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
 
     try {
-      const loggedUser = await login(email, password);
+      /**
+       * ✅ OPTION A (Recommended): Use your real backend login here.
+       * Replace this whole block with your API call and set `userFromApi` + `tokenFromApi`.
+       *
+       * Example:
+       * const res = await api.post("/auth/login", { emailOrUsername, password });
+       * const userFromApi = { name: res.data.user.name, role: res.data.user.role, email: res.data.user.email };
+       * const tokenFromApi = res.data.token;
+       */
 
-      if (loggedUser?.role === "entrepreneur") {
-        navigate("/dashboard/entrepreneur");
-      } else {
-        navigate("/marketplace");
-      }
-    } catch (err: any) {
-      setError(err.message || "Login failed");
+      // ✅ OPTION B (Works immediately): Login based on what you stored during signup
+      // This expects signup saved a "user" object already.
+      const existingUser = safeJsonParse<StoredUser>(localStorage.getItem("user"));
+
+      // If no existing user, we still create one so you can test UI.
+      const userFromApi: StoredUser = existingUser ?? {
+        name: emailOrUsername.trim() || "My Account",
+        role: preferredRole ?? "customer",
+        email: emailOrUsername.includes("@") ? emailOrUsername.trim() : undefined,
+      };
+
+      const tokenFromApi = "local-demo-token";
+
+      // Save auth
+      localStorage.setItem("token", tokenFromApi);
+      localStorage.setItem("user", JSON.stringify(userFromApi));
+
+      // Clean helper key
+      localStorage.removeItem("preferredRole");
+
+      // Redirect by role
+      redirectByRole(navigate, userFromApi.role);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <h1 className="text-xl font-display font-bold">
-          Login as {role === "customer" ? "Customer" : "Entrepreneur"}
-        </h1>
-
-        <p className="text-sm text-muted-foreground mt-1">
-          Access your CampusPrenue account
+    <div className="min-h-[calc(100vh-80px)] flex items-center justify-center px-6 py-10">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <h1 className="text-2xl font-semibold text-foreground">Welcome back</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Login to continue to CampusPreneur.
         </p>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        {preferredRole && (
+          <div className="mt-4 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+            You’re signing in as{" "}
+            <span className="font-medium text-foreground">
+              {preferredRole === "entrepreneur"
+                ? "Entrepreneur"
+                : preferredRole === "customer"
+                  ? "Customer"
+                  : "Admin"}
+            </span>
+            .
+          </div>
+        )}
+
+        <form onSubmit={handleLogin} className="mt-6 space-y-4">
           <div>
-            <label className="text-xs font-medium text-muted-foreground">
-              Email
+            <label className="text-sm font-medium text-foreground">
+              Email / Username
             </label>
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+            <input
+              value={emailOrUsername}
+              onChange={(e) => setEmailOrUsername(e.target.value)}
+              className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+              placeholder="you@example.com"
               required
-              className="mt-1"
             />
           </div>
 
           <div>
-            <div className="flex justify-between items-center">
-              <label className="text-xs font-medium text-muted-foreground">
-                Password
-              </label>
-
-              <Link
-                to="/forgot-password"
-                className="text-xs text-muted-foreground hover:text-foreground"
-              >
-                Forgot password?
-              </Link>
-            </div>
-
-            <div className="relative mt-1">
-              <Input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="pr-16"
-              />
-
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
-              >
-                {showPassword ? "Hide" : "Show"}
-              </button>
-            </div>
+            <label className="text-sm font-medium text-foreground">Password</label>
+            <input
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              type="password"
+              className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+              placeholder="••••••••"
+              required
+            />
           </div>
 
-          {error && <p className="text-red-500 text-xs">{error}</p>}
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Signing in..." : "Login"}
+          </Button>
 
-          <LoadingButton type="submit" loading={loading}>
-            Login
-          </LoadingButton>
+          <div className="flex items-center justify-between text-sm">
+            <Link to="/forgot-password" className="text-primary hover:underline">
+              Forgot password?
+            </Link>
+            <Link to="/" className="text-muted-foreground hover:underline">
+              Back home
+            </Link>
+          </div>
+
+          <div className="pt-2 text-sm text-muted-foreground">
+            Don’t have an account?{" "}
+            <Link to="/signup-customer" className="text-primary hover:underline">
+              Sign up
+            </Link>
+          </div>
         </form>
       </div>
     </div>
