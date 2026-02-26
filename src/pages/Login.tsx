@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
+import { LoadingButton } from "@/components/ui/LoadingButton";
 
 const Login = ({ role }: { role: "customer" | "entrepreneur" }) => {
   const { login } = useAuth();
@@ -94,9 +94,9 @@ const Login = ({ role }: { role: "customer" | "entrepreneur" }) => {
 
           {error && <p className="text-red-500 text-xs">{error}</p>}
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Logging in..." : "Login"}
-          </Button>
+          <LoadingButton type="submit" loading={loading}>
+            Login
+          </LoadingButton>
         </form>
       </div>
     </div>
