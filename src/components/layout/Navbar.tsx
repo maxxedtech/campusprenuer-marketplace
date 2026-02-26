@@ -15,31 +15,31 @@ const Navbar = () => {
   const isActive = (path: string) => location.pathname.startsWith(path);
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200">
-      <div className="max-w-7xl mx-auto flex items-center justify-between h-16 px-6">
+    <nav className="sticky top-0 z-50 bg-card/80 backdrop-blur-md border-b border-border">
+      <div className="container mx-auto flex items-center justify-between h-14 px-4">
 
         {/* LOGO */}
         <Link to="/" className="flex items-center">
           <img
             src="/logo.png"
-            alt="CampusPreneur"
-            className="h-10 w-auto"
+            alt="Logo"
+            className="h-12 w-auto"
           />
         </Link>
 
-        {/* DESKTOP NAVIGATION */}
-        <div className="hidden md:flex items-center gap-8">
+        {/* DESKTOP NAV */}
+        <div className="hidden md:flex items-center gap-6">
           {navLinks.map(({ to, label, icon: Icon }) => (
             <Link
               key={to}
               to={to}
               className={`flex items-center gap-2 text-sm font-medium transition ${
                 isActive(to)
-                  ? "text-blue-600"
-                  : "text-gray-600 hover:text-black"
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Icon className="w-4 h-4" />
+              <Icon className="w-5 h-5" />
               {label}
             </Link>
           ))}
@@ -68,13 +68,13 @@ const Navbar = () => {
 
       {/* MOBILE NAV */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-gray-200 bg-white">
+        <div className="md:hidden border-t border-border bg-card">
           <div className="flex flex-col p-4 gap-4">
             {navLinks.map(({ to, label, icon: Icon }) => (
               <Link
                 key={to}
                 to={to}
-                className="flex items-center gap-2 text-sm font-medium text-gray-700"
+                className="flex items-center gap-2 text-sm font-medium"
                 onClick={() => setMobileOpen(false)}
               >
                 <Icon className="w-4 h-4" />
