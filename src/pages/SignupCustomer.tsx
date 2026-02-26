@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MapPin, ShoppingBag, UserPlus } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { LoadingButton } from "@/components/ui/LoadingButton";
 
 const SignupCustomer = () => {
   const { signup } = useAuth();
@@ -37,9 +37,7 @@ const SignupCustomer = () => {
           <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center">
             <MapPin className="w-5 h-5 text-primary-foreground" />
           </div>
-          <span className="font-display text-xl font-bold">
-            CampusPrenue
-          </span>
+          <span className="font-display text-xl font-bold">CampusPrenue</span>
         </div>
 
         {/* Badge */}
@@ -48,9 +46,7 @@ const SignupCustomer = () => {
           Customer Account
         </div>
 
-        <h1 className="text-xl font-display font-bold">
-          Join CampusPrenue
-        </h1>
+        <h1 className="text-xl font-display font-bold">Join CampusPrenue</h1>
 
         <p className="text-sm text-muted-foreground mt-1">
           Discover local products & services
@@ -109,14 +105,12 @@ const SignupCustomer = () => {
             </div>
           </div>
 
-          {error && (
-            <p className="text-xs text-destructive">{error}</p>
-          )}
+          {error && <p className="text-xs text-destructive">{error}</p>}
 
-          <Button type="submit" className="w-full gap-2" disabled={loading}>
+          <LoadingButton type="submit" loading={loading} className="gap-2">
             <UserPlus className="w-4 h-4" />
-            {loading ? "Creating..." : "Create Account"}
-          </Button>
+            Create Account
+          </LoadingButton>
         </form>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
