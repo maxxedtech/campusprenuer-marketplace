@@ -1,9 +1,8 @@
-```tsx
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 
 import AppLayout from "@/components/layout/AppLayout";
@@ -20,6 +19,11 @@ import NotFound from "./pages/NotFound";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 
+// ✅ NEW: wrapper pages/components
+import LoginHub from "@/pages/LoginHub";
+import AccountRedirect from "@/components/auth/AccountRedirect";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -31,61 +35,65 @@ const App = () => (
 
         <BrowserRouter>
           <Routes>
-
             {/* MAIN APP LAYOUT */}
             <Route element={<AppLayout />}>
-
               <Route path="/" element={<Index />} />
 
+              {/* If you want these public, leave as-is.
+                  If you want only logged-in users, wrap with ProtectedRoute too. */}
               <Route path="/marketplace" element={<Marketplace />} />
-
-              <Route
-                path="/dashboard/entrepreneur"
-                element={<EntrepreneurDashboard />}
-              />
-
               <Route path="/chat" element={<ChatPage />} />
 
-              <Route path="/admin" element={<AdminPanel />} />
+              {/* ✅ Protected: Entrepreneur-only */}
+              <Route
+                path="/dashboard/entrepreneur"
+                element={
+                  <ProtectedRoute allow={["entrepreneur"]}>
+                    <EntrepreneurDashboard />
+                  </ProtectedRoute>
+                }
+              />
 
+              {/* ✅ Protected: Admin-only */}
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute allow={["admin"]}>
+                    <AdminPanel />
+                  </ProtectedRoute>
+                }
+              />
             </Route>
 
-
-            {/* LOGIN ROUTES */}
+            {/* ✅ Professional login flow */}
+            <Route path="/login" element={<LoginHub />} />
             <Route path="/login/customer" element={<Login role="customer" />} />
-            <Route path="/login/entrepreneur" element={<Login role="entrepreneur" />} />
+            <Route
+              path="/login/entrepreneur"
+              element={<Login role="entrepreneur" />}
+            />
 
-            {/* this fixes navbar /login link */}
-            <Route path="/login" element={<Navigate to="/login/customer" replace />} />
+            {/* ✅ Smart account route */}
+            <Route path="/account" element={<AccountRedirect />} />
 
-
-            {/* SIGNUP ROUTES */}
+            {/* SIGNUP */}
             <Route path="/signup/entrepreneur" element={<SignupEntrepreneur />} />
             <Route path="/signup/customer" element={<SignupCustomer />} />
 
-            {/* this fixes navbar /get-started */}
-            <Route path="/get-started" element={<Navigate to="/signup/customer" replace />} />
+            {/* Optional alias to prevent navbar 404s */}
+            <Route path="/get-started" element={<SignupCustomer />} />
 
-
-            {/* PASSWORD RESET */}
+            {/* PASSWORD */}
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password/:token" element={<ResetPassword />} />
 
-
-            {/* ACCOUNT REDIRECT (since /account doesn't exist) */}
-            <Route path="/account" element={<Navigate to="/marketplace" replace />} />
-
-
-            {/* 404 PAGE */}
+            {/* 404 */}
             <Route path="*" element={<NotFound />} />
-
           </Routes>
         </BrowserRouter>
-
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
 
 export default App;
-```
