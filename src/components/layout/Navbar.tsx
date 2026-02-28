@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ShoppingBag, MessageCircle, Menu, X, User, LogOut } from "lucide-react";
+import { ShoppingBag, MessageCircle, Menu, X, User, LogOut, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
@@ -51,22 +51,24 @@ const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const isActive = (path: string) => location.pathname.startsWith(path);
+
+  // ✅ Role-aware links
   const navLinks = [
     { to: "/marketplace", label: "Marketplace", icon: ShoppingBag },
     { to: "/chat", label: "Chat", icon: MessageCircle },
+    ...(auth.isLoggedIn && auth.role === "entrepreneur"
+      ? [{ to: "/dashboard/entrepreneur", label: "My Dashboard", icon: LayoutDashboard }]
+      : []),
   ];
-
-  const isActive = (path: string) => location.pathname.startsWith(path);
 
   useEffect(() => {
     // initial
     setAuth(readUserFromStorage());
 
-    // update on custom auth event (same tab)
     const onAuthChanged = () => setAuth(readUserFromStorage());
     window.addEventListener(AUTH_CHANGED_EVENT, onAuthChanged);
 
-    // update on storage change (other tabs)
     const onStorage = () => setAuth(readUserFromStorage());
     window.addEventListener("storage", onStorage);
 
@@ -77,7 +79,6 @@ const Navbar = () => {
   }, []);
 
   useEffect(() => {
-    // close menus on route change
     setMobileOpen(false);
     setAccountOpen(false);
   }, [location.pathname]);
@@ -86,8 +87,11 @@ const Navbar = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
-    navigate("/login");
+    navigate("/login"); // ✅ /login exists now (alias)
   };
+
+  const accountTarget =
+    auth.role === "entrepreneur" ? "/dashboard/entrepreneur" : "/marketplace";
 
   return (
     <nav className="sticky top-0 z-50 bg-card/80 backdrop-blur-md border-b border-border">
@@ -151,9 +155,9 @@ const Navbar = () => {
               </button>
 
               {accountOpen && (
-                <div className="absolute right-0 mt-2 w-48 rounded-xl border border-border bg-card shadow-lg overflow-hidden">
+                <div className="absolute right-0 mt-2 w-52 rounded-xl border border-border bg-card shadow-lg overflow-hidden">
                   <Link
-                    to="/account"
+                    to={accountTarget}
                     className="block px-4 py-3 text-sm hover:bg-muted"
                   >
                     My Account
@@ -220,7 +224,7 @@ const Navbar = () => {
                 </div>
 
                 <Button variant="ghost" asChild>
-                  <Link to="/account">My Account</Link>
+                  <Link to={accountTarget}>My Account</Link>
                 </Button>
 
                 <Button variant="destructive" onClick={logout}>
