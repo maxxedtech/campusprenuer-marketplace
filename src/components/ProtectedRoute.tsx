@@ -1,24 +1,41 @@
 import { Navigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import type { UserRole } from "@/types";
 
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-  allowedRoles?: UserRole[];
-}
+type Role = "entrepreneur" | "customer" | "admin" | "unknown";
+type StoredUser = { role?: Role };
 
-const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
-  const { isAuthenticated, user } = useAuth();
+function readAuth() {
+  const token = localStorage.getItem("token");
+  const userRaw = localStorage.getItem("user");
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+  let user: StoredUser | null = null;
+  if (userRaw) {
+    try {
+      user = JSON.parse(userRaw);
+    } catch {
+      user = null;
+    }
   }
 
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/" replace />;
+  const isLoggedIn = Boolean(token && user);
+  const role = (user?.role as Role) || "unknown";
+
+  return { isLoggedIn, role };
+}
+
+export default function ProtectedRoute({
+  children,
+  allow,
+}: {
+  children: React.ReactNode;
+  allow?: Role[];
+}) {
+  const { isLoggedIn, role } = readAuth();
+
+  if (!isLoggedIn) return <Navigate to="/login" replace />;
+
+  if (allow && !allow.includes(role)) {
+    return <Navigate to="/account" replace />;
   }
 
   return <>{children}</>;
-};
-
-export default ProtectedRoute;
+}
