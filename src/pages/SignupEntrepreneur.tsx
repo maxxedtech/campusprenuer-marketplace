@@ -1,133 +1,111 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
-type StoredUser = {
-  name: string;
-  role: "customer" | "entrepreneur" | "admin";
-  email?: string;
-  businessName?: string;
-};
+const AUTH_CHANGED_EVENT = "auth-changed";
 
-const SignupEntrepreneur = () => {
+type Role = "entrepreneur" | "customer" | "admin" | "unknown";
+
+export default function SignupEntrepreneur() {
   const navigate = useNavigate();
 
-  const [name, setName] = useState("");
-  const [businessName, setBusinessName] = useState("");
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState(""); // optional if you have backend
+  const [password, setPassword] = useState("");
+
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     setLoading(true);
 
     try {
       /**
-       * ✅ OPTION A (Recommended): Call your backend signup endpoint here.
-       * Replace this block with your API call.
-       *
-       * Example:
-       * const res = await api.post("/auth/signup", { name, email, password, role: "entrepreneur", businessName });
-       * const token = res.data.token;
-       * const userFromApi = res.data.user;
+       * ✅ If you have a backend:
+       * Replace this fake response with your API call,
+       * but keep the "success block" exactly the same.
        */
 
-      // ✅ Works immediately: store locally (for UI testing)
-      const user: StoredUser = {
-        name: name.trim(),
-        role: "entrepreneur",
-        email: email.trim(),
-        businessName: businessName.trim() || undefined,
+      // --- FAKE SIGNUP (works immediately) ---
+      // In a real app, you would do:
+      // const res = await fetch("/api/signup/entrepreneur", { ... })
+      // const data = await res.json()
+      const token = "demo-token-" + Date.now();
+      const user = {
+        fullName,
+        email,
+        role: "entrepreneur" as Role,
       };
+      // --- END FAKE SIGNUP ---
 
+      // ✅ SUCCESS BLOCK (this is the important part)
+      localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
-      localStorage.setItem("token", "local-demo-token");
-
-      // also store preferredRole so login page can show it (optional)
-      localStorage.setItem("preferredRole", "entrepreneur");
-
-      navigate("/entrepreneur-dashboard");
+      window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
+      navigate("/dashboard/entrepreneur");
+    } catch (err: any) {
+      setError(err?.message || "Signup failed");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-[calc(100vh-80px)] flex items-center justify-center px-6 py-10">
-      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold text-foreground">Create an Entrepreneur account</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          List products and sell on campus.
+    <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center px-4 py-10">
+      <form
+        onSubmit={handleSignup}
+        className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-sm"
+      >
+        <h1 className="text-xl font-semibold">Entrepreneur Sign Up</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Create your entrepreneur account
         </p>
 
-        <form onSubmit={handleSignup} className="mt-6 space-y-4">
-          <div>
-            <label className="text-sm font-medium text-foreground">Your name</label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/40"
-              placeholder="Dave Adamson"
-              required
-            />
-          </div>
+        <div className="mt-5 grid gap-3">
+          <Input
+            placeholder="Full name"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            required
+          />
 
-          <div>
-            <label className="text-sm font-medium text-foreground">Business name (optional)</label>
-            <input
-              value={businessName}
-              onChange={(e) => setBusinessName(e.target.value)}
-              className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/40"
-              placeholder="Dave Snacks"
-            />
-          </div>
+          <Input
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            type="email"
+            required
+          />
 
-          <div>
-            <label className="text-sm font-medium text-foreground">Email</label>
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              type="email"
-              className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/40"
-              placeholder="you@example.com"
-              required
-            />
-          </div>
+          <Input
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            type="password"
+            required
+          />
 
-          <div>
-            <label className="text-sm font-medium text-foreground">Password</label>
-            <input
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              type="password"
-              className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/40"
-              placeholder="••••••••"
-              required
-            />
-          </div>
+          {error && (
+            <div className="text-sm text-red-500 border border-red-200 bg-red-50 rounded-xl p-3">
+              {error}
+            </div>
+          )}
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Creating account..." : "Sign up as Entrepreneur"}
+          <Button type="submit" disabled={loading}>
+            {loading ? "Creating account..." : "Create Account"}
           </Button>
 
           <div className="text-sm text-muted-foreground">
-            Just want to buy?{" "}
-            <Link to="/signup-customer" className="text-primary hover:underline">
-              Sign up as Customer
-            </Link>
-          </div>
-
-          <div className="text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link to="/login" className="text-primary hover:underline">
+            <Link className="underline hover:text-foreground" to="/login">
               Login
             </Link>
           </div>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
   );
-};
-
-export default SignupEntrepreneur;
+}
