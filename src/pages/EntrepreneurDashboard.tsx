@@ -1,228 +1,216 @@
-import { useState, useEffect } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Plus,
-  Store,
-  Package,
-  BarChart3,
-  Crown,
-} from "lucide-react";
-import ProfileEditor from "@/components/dashboard/ProfileEditor";
-import ListingCard from "@/components/dashboard/ListingCard";
-import ListingForm from "@/components/dashboard/ListingForm";
-import SubscriptionModal from "@/components/common/SubscriptionModal";
-import { useAuth } from "@/contexts/AuthContext";
-import type { BusinessProfile, Listing } from "@/types";
+import { Input } from "@/components/ui/input";
 
-const API_URL = "https://townketbackend.onrender.com";
-
-const EntrepreneurDashboard = () => {
-  const { token } = useAuth();
-
-  const [profile, setProfile] =
-    useState<BusinessProfile | null | undefined>(undefined);
-
-  const [listings, setListings] = useState<Listing[]>([]);
-  const [formOpen, setFormOpen] = useState(false);
-  const [editingListing, setEditingListing] = useState<Listing | null>(null);
-  const [subOpen, setSubOpen] = useState(false);
-
-  // ================= LOAD DATA =================
-  useEffect(() => {
-    if (!token) return;
-
-    const fetchData = async () => {
-      try {
-        const profileRes = await fetch(`${API_URL}/api/business/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (profileRes.ok) {
-          const profileData = await profileRes.json();
-          setProfile(profileData); // can be null or object
-        } else {
-          setProfile(null);
-        }
-
-        const listingsRes = await fetch(`${API_URL}/api/listings/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (listingsRes.ok) {
-          const listingsData = await listingsRes.json();
-          setListings(listingsData);
-        }
-      } catch (err) {
-        console.error(err);
-        setProfile(null);
-      }
-    };
-
-    fetchData();
-  }, [token]);
-
-  // ================= SAVE PROFILE =================
-  const handleSaveProfile = async (updatedProfile: BusinessProfile) => {
-    try {
-      const res = await fetch(`${API_URL}/api/business`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(updatedProfile),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setProfile(data);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  // ================= ADD LISTING =================
-  const handleAddListing = async (
-    data: Omit<Listing, "id" | "createdAt">
-  ) => {
-    try {
-      const res = await fetch(`${API_URL}/api/listings`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (res.ok) {
-        const newListing = await res.json();
-        setListings((prev) => [...prev, newListing]);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleDeleteListing = async (id: string) => {
-    try {
-      await fetch(`${API_URL}/api/listings/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      setListings((prev) => prev.filter((l) => l.id !== id));
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  // ================= LOADING STATE =================
-  if (profile === undefined) {
-    return <div className="p-10 text-center">Loading dashboard...</div>;
-  }
-
-  // ================= NO BUSINESS YET =================
-  if (profile === null) {
-    return (
-      <div className="p-10 text-center">
-        <h2 className="text-xl font-bold mb-4">
-          Create Your Business Profile
-        </h2>
-
-        <ProfileEditor
-          profile={null}
-          onChange={setProfile}
-          onSave={handleSaveProfile}
-        />
-      </div>
-    );
-  }
-
-  // ================= MAIN DASHBOARD =================
-  return (
-    <div className="container mx-auto px-4 py-8 max-w-5xl">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage your business
-          </p>
-        </div>
-
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2"
-          onClick={() => setSubOpen(true)}
-        >
-          <Crown className="w-4 h-4" />
-          Upgrade
-        </Button>
-      </div>
-
-      <Tabs defaultValue="profile">
-        <TabsList className="mb-6">
-          <TabsTrigger value="profile">
-            <Store className="w-4 h-4" /> Profile
-          </TabsTrigger>
-          <TabsTrigger value="listings">
-            <Package className="w-4 h-4" /> Listings
-          </TabsTrigger>
-          <TabsTrigger value="analytics">
-            <BarChart3 className="w-4 h-4" /> Analytics
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="profile">
-          <ProfileEditor
-            profile={profile}
-            onChange={setProfile}
-            onSave={handleSaveProfile}
-          />
-        </TabsContent>
-
-        <TabsContent value="listings">
-          <div className="flex justify-between mb-4">
-            <h2 className="font-bold">Your Listings</h2>
-            <Button onClick={() => setFormOpen(true)}>
-              <Plus className="w-4 h-4" /> Add Listing
-            </Button>
-          </div>
-
-          {listings.length === 0 ? (
-            <div className="text-center py-10">
-              No listings yet.
-            </div>
-          ) : (
-            listings.map((l) => (
-              <ListingCard
-                key={l.id}
-                listing={l}
-                editable
-                onDelete={handleDeleteListing}
-              />
-            ))
-          )}
-
-          <ListingForm
-            open={formOpen}
-            onOpenChange={setFormOpen}
-            onSubmit={handleAddListing}
-            initial={editingListing}
-          />
-        </TabsContent>
-
-        <TabsContent value="analytics">
-          Analytics will show when backend tracking is added.
-        </TabsContent>
-      </Tabs>
-
-      <SubscriptionModal open={subOpen} onOpenChange={setSubOpen} />
-    </div>
-  );
+type Product = {
+  id: string;
+  ownerEmail: string;
+  name: string;
+  price: string;
+  description: string;
+  createdAt: number;
 };
 
-export default EntrepreneurDashboard;
+type StoredUser = {
+  email?: string;
+  role?: string;
+  fullName?: string;
+  name?: string;
+};
+
+const PRODUCTS_KEY = "products";
+
+function readUser(): StoredUser | null {
+  const raw = localStorage.getItem("user");
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function loadProducts(): Product[] {
+  const raw = localStorage.getItem(PRODUCTS_KEY);
+  if (!raw) return [];
+  try {
+    const data = JSON.parse(raw);
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveProducts(products: Product[]) {
+  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
+}
+
+export default function EntrepreneurDashboard() {
+  const user = useMemo(() => readUser(), []);
+  const ownerEmail = user?.email || "unknown@user";
+
+  const [products, setProducts] = useState<Product[]>([]);
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
+  const [description, setDescription] = useState("");
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setProducts(loadProducts());
+  }, []);
+
+  const myProducts = useMemo(() => {
+    return products
+      .filter((p) => p.ownerEmail === ownerEmail)
+      .sort((a, b) => b.createdAt - a.createdAt);
+  }, [products, ownerEmail]);
+
+  const resetForm = () => {
+    setName("");
+    setPrice("");
+    setDescription("");
+    setEditingId(null);
+  };
+
+  const onSubmit = () => {
+    if (!name.trim() || !price.trim()) return;
+
+    const next = [...products];
+
+    if (editingId) {
+      const idx = next.findIndex((p) => p.id === editingId);
+      if (idx >= 0) {
+        next[idx] = {
+          ...next[idx],
+          name: name.trim(),
+          price: price.trim(),
+          description: description.trim(),
+        };
+      }
+    } else {
+      next.push({
+        id: crypto.randomUUID(),
+        ownerEmail,
+        name: name.trim(),
+        price: price.trim(),
+        description: description.trim(),
+        createdAt: Date.now(),
+      });
+    }
+
+    setProducts(next);
+    saveProducts(next);
+    resetForm();
+  };
+
+  const onEdit = (p: Product) => {
+    setEditingId(p.id);
+    setName(p.name);
+    setPrice(p.price);
+    setDescription(p.description);
+  };
+
+  const onDelete = (id: string) => {
+    const next = products.filter((p) => p.id !== id);
+    setProducts(next);
+    saveProducts(next);
+    if (editingId === id) resetForm();
+  };
+
+  return (
+    <div className="max-w-6xl mx-auto px-6 py-10">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Entrepreneur Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage your goods: add, edit, and delete products.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-8 grid gap-6 md:grid-cols-3">
+        {/* Form */}
+        <div className="md:col-span-1 rounded-2xl border border-border bg-card p-5">
+          <h2 className="font-semibold">
+            {editingId ? "Edit Product" : "Add Product"}
+          </h2>
+
+          <div className="mt-4 grid gap-3">
+            <Input
+              placeholder="Product name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <Input
+              placeholder="Price (e.g. ₦1500)"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+            />
+            <Input
+              placeholder="Short description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+
+            <div className="flex gap-2">
+              <Button onClick={onSubmit} className="flex-1">
+                {editingId ? "Update" : "Add"}
+              </Button>
+              {editingId && (
+                <Button variant="outline" onClick={resetForm}>
+                  Cancel
+                </Button>
+              )}
+            </div>
+
+            <div className="text-xs text-muted-foreground">
+              Owner: {ownerEmail}
+            </div>
+          </div>
+        </div>
+
+        {/* List */}
+        <div className="md:col-span-2 rounded-2xl border border-border bg-card p-5">
+          <h2 className="font-semibold">My Products</h2>
+
+          {myProducts.length === 0 ? (
+            <div className="mt-4 text-sm text-muted-foreground">
+              You haven’t added any products yet.
+            </div>
+          ) : (
+            <div className="mt-4 grid gap-3">
+              {myProducts.map((p) => (
+                <div
+                  key={p.id}
+                  className="rounded-xl border border-border p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+                >
+                  <div>
+                    <div className="font-medium">{p.name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {p.price} • {p.description || "No description"}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => onEdit(p)}>
+                      Edit
+                    </Button>
+                    <Button variant="destructive" onClick={() => onDelete(p.id)}>
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-5 text-xs text-muted-foreground">
+            Note: This dashboard uses localStorage for now. If you already have a backend,
+            we can connect these actions to your API.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
