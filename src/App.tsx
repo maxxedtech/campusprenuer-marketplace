@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
+import AppLayout from "@/components/AppLayout";
 import Index from "@/pages/Index";
 import LoginHub from "@/pages/LoginHub";
 import Login from "@/pages/Login";
@@ -63,55 +64,58 @@ function AccountRedirect() {
 export default function App() {
   return (
     <Routes>
-      {/* Public */}
-      <Route path="/" element={<Index />} />
-      <Route path="/login" element={<LoginHub />} />
-      <Route path="/login/customer" element={<Login role="customer" />} />
-      <Route path="/login/entrepreneur" element={<Login role="entrepreneur" />} />
-      <Route path="/signup/customer" element={<SignupCustomer />} />
-      <Route path="/signup/entrepreneur" element={<SignupEntrepreneur />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
+      {/* Everything uses the shared layout */}
+      <Route element={<AppLayout />}>
+        {/* Public */}
+        <Route path="/" element={<Index />} />
+        <Route path="/login" element={<LoginHub />} />
+        <Route path="/login/customer" element={<Login role="customer" />} />
+        <Route path="/login/entrepreneur" element={<Login role="entrepreneur" />} />
+        <Route path="/signup/customer" element={<SignupCustomer />} />
+        <Route path="/signup/entrepreneur" element={<SignupEntrepreneur />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
-      {/* Redirect helper */}
-      <Route path="/account" element={<AccountRedirect />} />
+        {/* Redirect helper */}
+        <Route path="/account" element={<AccountRedirect />} />
 
-      {/* Protected */}
-      <Route
-        path="/marketplace"
-        element={
-          <RequireAuth>
-            <Marketplace />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/chat"
-        element={
-          <RequireAuth>
-            <ChatPage />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/dashboard/entrepreneur"
-        element={
-          <RequireAuth allow={["entrepreneur"]}>
-            <EntrepreneurDashboard />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/admin"
-        element={
-          <RequireAuth allow={["admin"]}>
-            <AdminPanel />
-          </RequireAuth>
-        }
-      />
+        {/* Protected */}
+        <Route
+          path="/marketplace"
+          element={
+            <RequireAuth>
+              <Marketplace />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/chat"
+          element={
+            <RequireAuth>
+              <ChatPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/dashboard/entrepreneur"
+          element={
+            <RequireAuth allow={["entrepreneur"]}>
+              <EntrepreneurDashboard />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <RequireAuth allow={["admin"]}>
+              <AdminPanel />
+            </RequireAuth>
+          }
+        />
 
-      {/* Fallback */}
-      <Route path="*" element={<NotFound />} />
+        {/* Fallback */}
+        <Route path="*" element={<NotFound />} />
+      </Route>
     </Routes>
   );
 }
