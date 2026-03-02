@@ -40,3 +40,13 @@ export function deleteProduct(id: string) {
 export function getProductsBySeller(sellerId: string) {
   return getProducts().filter((p) => p.sellerId === sellerId);
 }
+export function getProductById(id: string): Product | null {
+  const products = getProducts();
+  return products.find((p) => p.id === id) || null;
+}
+
+export function updateProduct(updated: Product) {
+  const products = getProducts();
+  const next = products.map((p) => (p.id === updated.id ? updated : p));
+  saveProducts(next);
+}
