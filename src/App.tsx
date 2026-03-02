@@ -1,7 +1,9 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import AppLayout from "@/components/AppLayout";
+
 import Index from "@/pages/Index";
+import GetStarted from "@/pages/GetStarted";
 import LoginHub from "@/pages/LoginHub";
 import Login from "@/pages/Login";
 import Marketplace from "@/pages/Marketplace";
@@ -56,7 +58,8 @@ function AccountRedirect() {
   const role = (user?.role ?? "unknown") as Role;
 
   if (!isLoggedIn) return <Navigate to="/login" replace />;
-  if (role === "entrepreneur") return <Navigate to="/dashboard/entrepreneur" replace />;
+  if (role === "entrepreneur")
+    return <Navigate to="/dashboard/entrepreneur" replace />;
   if (role === "admin") return <Navigate to="/admin" replace />;
   return <Navigate to="/marketplace" replace />;
 }
@@ -68,11 +71,15 @@ export default function App() {
       <Route element={<AppLayout />}>
         {/* Public */}
         <Route path="/" element={<Index />} />
+        <Route path="/get-started" element={<GetStarted />} />
+
         <Route path="/login" element={<LoginHub />} />
         <Route path="/login/customer" element={<Login role="customer" />} />
         <Route path="/login/entrepreneur" element={<Login role="entrepreneur" />} />
+
         <Route path="/signup/customer" element={<SignupCustomer />} />
         <Route path="/signup/entrepreneur" element={<SignupEntrepreneur />} />
+
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
