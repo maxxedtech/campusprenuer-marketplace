@@ -5,11 +5,10 @@ import { Input } from "@/components/ui/input";
 import { addProduct } from "@/utils/productStorage";
 
 function makeId() {
-  // Works everywhere
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-const AddProduct = () => {
+export default function AddProduct() {
   const navigate = useNavigate();
 
   const [name, setName] = useState("");
@@ -20,7 +19,7 @@ const AddProduct = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
     setSaving(true);
@@ -30,15 +29,15 @@ const AddProduct = () => {
       const user = userRaw ? JSON.parse(userRaw) : null;
 
       if (!user) {
-        setSaving(false);
         setError("You are not logged in. Please login again.");
+        setSaving(false);
         return;
       }
 
-      const sellerId = user?.email || user?.id || user?.name; // fallback
+      const sellerId = user.email || user.id || user.name;
       if (!sellerId) {
+        setError("Account info incomplete. Please login again.");
         setSaving(false);
-        setError("Your account info is incomplete. Please login again.");
         return;
       }
 
@@ -49,18 +48,14 @@ const AddProduct = () => {
         imageUrl: imageUrl.trim(),
         category: category.trim(),
         description: description.trim(),
-        seller: user?.name || "Entrepreneur",
+        seller: user.name || "Entrepreneur",
         sellerId,
         createdAt: Date.now(),
       });
 
-      // quick confirm in console
-      console.log("✅ Product saved:", { name, price });
-
-      // go to list
       navigate("/dashboard/entrepreneur/products");
     } catch (err: any) {
-      console.error("❌ Save failed:", err);
+      console.error(err);
       setError(err?.message || "Failed to save product.");
       setSaving(false);
     }
@@ -101,7 +96,7 @@ const AddProduct = () => {
         />
 
         <Input
-          placeholder="Category (e.g. Fashion, Food)"
+          placeholder="Category (optional)"
           value={category}
           onChange={(e) => setCategory(e.target.value)}
         />
@@ -114,4 +109,10 @@ const AddProduct = () => {
           required
         />
 
-        {/* ✅ MUST be type="submit" */}
+        <Button type="submit" className="w-full" disabled={saving}>
+          {saving ? "Saving..." : "Save Product"}
+        </Button>
+      </form>
+    </div>
+  );
+}
