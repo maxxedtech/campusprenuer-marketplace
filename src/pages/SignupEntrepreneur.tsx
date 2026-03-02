@@ -1,146 +1,104 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
-const AUTH_CHANGED_EVENT = "auth-changed";
-const USERS_KEY = "users_db";
-
-type Role = "entrepreneur" | "customer" | "admin";
-type StoredUser = {
-  name: string;
-  email: string;
-  role: Role;
-  password: string; // MVP only (do not do this in production)
-};
-
-function loadUsers(): StoredUser[] {
-  const raw = localStorage.getItem(USERS_KEY);
-  if (!raw) return [];
-  try {
-    return JSON.parse(raw) as StoredUser[];
-  } catch {
-    return [];
-  }
-}
-
-function saveUsers(users: StoredUser[]) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
+import { createUser } from "@/utils/userStorage";
 
 export default function SignupEntrepreneur() {
   const navigate = useNavigate();
 
-  const [fullName, setFullName] = useState("");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSignup = async (e: React.FormEvent) => {
+  const handleSignup = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      const cleanName = fullName.trim();
-      const cleanEmail = email.trim().toLowerCase();
-
-      if (!cleanName) throw new Error("Enter your full name");
-      if (!cleanEmail) throw new Error("Enter your email");
-      if (!password) throw new Error("Enter a password");
-
-      const users = loadUsers();
-      const exists = users.some((u) => u.email.toLowerCase() === cleanEmail);
-      if (exists) throw new Error("An account with this email already exists");
-
-      const newUser: StoredUser = {
-        name: cleanName,
-        email: cleanEmail,
-        role: "entrepreneur",
+      const record = createUser({
+        name: name.trim(),
+        email: email.trim(),
         password,
-      };
+        role: "entrepreneur",
+      });
 
-      users.push(newUser);
-      saveUsers(users);
-
-      // Create session
-      localStorage.setItem("token", "local-demo-token-" + Date.now());
+      // auto-login after signup
+      localStorage.setItem("token", "local-token");
       localStorage.setItem(
         "user",
-        JSON.stringify({ name: newUser.name, email: newUser.email, role: newUser.role })
+        JSON.stringify({
+          id: record.id,
+          name: record.name,
+          email: record.email,
+          role: record.role,
+        })
       );
-      window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
 
       navigate("/dashboard/entrepreneur");
     } catch (err: any) {
-      setError(err?.message || "Signup failed");
-    } finally {
+      console.error(err);
+      setError(err?.message || "Signup failed.");
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center px-4 py-10">
-      <form
-        onSubmit={handleSignup}
-        className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-sm"
-      >
-        <h1 className="text-xl font-semibold">Entrepreneur Sign Up</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Create your entrepreneur account
-        </p>
+    <div className="container mx-auto px-4 py-10">
+      <div className="max-w-md mx-auto bg-white border rounded-xl p-6 space-y-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold">Sign up (Entrepreneur)</h1>
+          <p className="text-sm text-muted-foreground">
+            Create an account to list and manage products.
+          </p>
+        </div>
 
-        <div className="mt-5 grid gap-3">
+        {error ? (
+          <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
+            {error}
+          </div>
+        ) : null}
+
+        <form onSubmit={handleSignup} className="space-y-3">
           <Input
-            placeholder="Full name"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
+            placeholder="Business / Full name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             required
           />
 
           <Input
             placeholder="Email"
+            type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            type="email"
             required
           />
 
           <Input
             placeholder="Password"
+            type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            type="password"
             required
           />
 
-          {error && (
-            <div className="text-sm border border-destructive/30 bg-destructive/10 rounded-xl p-3">
-              {error}
-            </div>
-          )}
-
-          <Button type="submit" disabled={loading}>
-            {loading ? "Creating account..." : "Create Account"}
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Creating account..." : "Create entrepreneur account"}
           </Button>
+        </form>
 
-          <div className="text-sm text-muted-foreground">
-            Want to buy instead?{" "}
-            <Link className="underline hover:text-foreground" to="/signup/customer">
-              Sign up as Customer
-            </Link>
-          </div>
-
-          <div className="text-sm text-muted-foreground">
-            Already have an account?{" "}
-            <Link className="underline hover:text-foreground" to="/login">
-              Login
-            </Link>
-          </div>
+        <div className="text-sm text-muted-foreground">
+          Already have an account?{" "}
+          <Link to="/login" className="underline">
+            Login
+          </Link>
         </div>
-      </form>
+      </div>
     </div>
   );
 }
