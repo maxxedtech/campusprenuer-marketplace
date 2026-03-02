@@ -4,16 +4,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 type Role = "entrepreneur" | "customer" | "admin" | "unknown";
+type StoredUser = { name?: string; email?: string; role?: Role };
 
-function readRole(): Role {
-  const userRaw = localStorage.getItem("user");
-  if (!userRaw) return "unknown";
+function readUser(): StoredUser | null {
+  const raw = localStorage.getItem("user");
+  if (!raw) return null;
   try {
-    const user = JSON.parse(userRaw) as { role?: Role };
-    return (user?.role ?? "unknown") as Role;
+    return JSON.parse(raw) as StoredUser;
   } catch {
-    return "unknown";
+    return null;
   }
+}
+
+function getDisplayName(email: string) {
+  const left = email.split("@")[0] || "Account";
+  // make it look nicer than raw email
+  return left
+    .replace(/[._-]+/g, " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 }
 
 export default function Login() {
@@ -31,24 +42,37 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // ✅ IMPORTANT: Use your existing login logic here.
-      // If you already had a useAuth() context before, paste your old login(email, password) call here.
-      //
-      // For now, this expects your existing login code to store:
-      // localStorage.setItem("token", token)
-      // localStorage.setItem("user", JSON.stringify({ role: "...", ... }))
-      //
-      // If your project already logs in via API, keep it — just ensure the two keys are set.
-
-      // ---- START: placeholder (replace with your real login call) ----
-      // Example only: throw if empty (so you remember to wire real auth)
       if (!email || !password) throw new Error("Enter email and password");
-      // ---- END: placeholder ----
 
-      const role = readRole();
+      /**
+       * ✅ Replace this block with your real API/auth call.
+       * The ONLY requirement is:
+       *  - localStorage.setItem("token", token)
+       *  - localStorage.setItem("user", JSON.stringify({ name, email, role }))
+       */
 
-      if (role === "entrepreneur") navigate("/dashboard/entrepreneur");
-      else if (role === "admin") navigate("/admin");
+      // ---- TEMP demo storage (so everything works immediately) ----
+      const token = "demo-token";
+      const role: Role = "customer"; // change when your real backend returns role
+
+      const userToStore: StoredUser = {
+        name: getDisplayName(email),
+        email,
+        role,
+      };
+
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(userToStore));
+      // ------------------------------------------------------------
+
+      // ✅ this makes Navbar update immediately (no refresh)
+      window.dispatchEvent(new Event("auth:changed"));
+
+      const user = readUser();
+      const finalRole = (user?.role ?? "unknown") as Role;
+
+      if (finalRole === "entrepreneur") navigate("/dashboard/entrepreneur");
+      else if (finalRole === "admin") navigate("/admin");
       else navigate("/marketplace");
     } catch (err: any) {
       setError(err?.message || "Login failed");
