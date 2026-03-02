@@ -4,10 +4,8 @@ import AppLayout from "@/components/layout/AppLayout";
 
 import Index from "@/pages/Index";
 import GetStarted from "@/pages/GetStarted";
-import LoginHub from "@/pages/LoginHub";
 import Login from "@/pages/Login";
 import Marketplace from "@/pages/Marketplace";
-import EntrepreneurDashboard from "@/pages/EntrepreneurDashboard";
 import AdminPanel from "@/pages/AdminPanel";
 import ChatPage from "@/pages/ChatPage";
 import SignupCustomer from "@/pages/SignupCustomer";
@@ -15,6 +13,13 @@ import SignupEntrepreneur from "@/pages/SignupEntrepreneur";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/NotFound";
+
+// ✅ Dashboard pages (NEW)
+import EntrepreneurDashboard from "@/pages/dashboard/EntrepreneurDashboard";
+import DashboardHome from "@/pages/dashboard/entrepreneur/DashboardHome";
+import AddProduct from "@/pages/dashboard/entrepreneur/AddProduct";
+import MyProducts from "@/pages/dashboard/entrepreneur/MyProducts";
+import EditProduct from "@/pages/dashboard/entrepreneur/EditProduct";
 
 type Role = "entrepreneur" | "customer" | "admin" | "unknown";
 type StoredUser = { role?: Role } | null;
@@ -72,7 +77,6 @@ export default function App() {
         {/* Public */}
         <Route path="/" element={<Index />} />
         <Route path="/get-started" element={<GetStarted />} />
-        
         <Route path="/login" element={<Login />} />
 
         <Route path="/signup/customer" element={<SignupCustomer />} />
@@ -101,6 +105,8 @@ export default function App() {
             </RequireAuth>
           }
         />
+
+        {/* ✅ Entrepreneur Dashboard (Nested Routes) */}
         <Route
           path="/dashboard/entrepreneur"
           element={
@@ -108,7 +114,13 @@ export default function App() {
               <EntrepreneurDashboard />
             </RequireAuth>
           }
-        />
+        >
+          <Route index element={<DashboardHome />} />
+          <Route path="add" element={<AddProduct />} />
+          <Route path="products" element={<MyProducts />} />
+          <Route path="products/:id/edit" element={<EditProduct />} />
+        </Route>
+
         <Route
           path="/admin"
           element={
