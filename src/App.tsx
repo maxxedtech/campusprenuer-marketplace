@@ -72,10 +72,8 @@ export default function App() {
         {/* Public */}
         <Route path="/" element={<Index />} />
         <Route path="/get-started" element={<GetStarted />} />
-
-        <Route path="/login" element={<LoginHub />} />
-        <Route path="/login/customer" element={<Login role="customer" />} />
-        <Route path="/login/entrepreneur" element={<Login role="entrepreneur" />} />
+        
+        <Route path="/login" element={<Login />} />
 
         <Route path="/signup/customer" element={<SignupCustomer />} />
         <Route path="/signup/entrepreneur" element={<SignupEntrepreneur />} />
