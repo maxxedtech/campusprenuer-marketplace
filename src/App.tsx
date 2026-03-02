@@ -14,12 +14,12 @@ import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/NotFound";
 
-// ✅ Dashboard pages (NEW)
-import EntrepreneurDashboard from "@/pages/dashboard/EntrepreneurDashboard";
-import DashboardHome from "@/pages/dashboard/entrepreneur/DashboardHome";
-import AddProduct from "@/pages/dashboard/entrepreneur/AddProduct";
-import MyProducts from "@/pages/dashboard/entrepreneur/MyProducts";
-import EditProduct from "@/pages/dashboard/entrepreneur/EditProduct";
+// ✅ Dashboard components (YOUR PATH)
+import EntrepreneurDashboard from "@/components/dashboard/EntrepreneurDashboard";
+import DashboardHome from "@/components/dashboard/entrepreneur/DashboardHome";
+import AddProduct from "@/components/dashboard/entrepreneur/AddProduct";
+import MyProducts from "@/components/dashboard/entrepreneur/MyProducts";
+import EditProduct from "@/components/dashboard/entrepreneur/EditProduct";
 
 type Role = "entrepreneur" | "customer" | "admin" | "unknown";
 type StoredUser = { role?: Role } | null;
