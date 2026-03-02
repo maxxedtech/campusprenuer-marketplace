@@ -2,145 +2,104 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
-type Role = "entrepreneur" | "customer" | "admin" | "unknown";
-type StoredUser = { name?: string; fullName?: string; username?: string; email?: string; role?: Role };
-
-// MUST match Navbar
-const AUTH_CHANGED_EVENT = "auth-changed";
-
-function readUser(): StoredUser | null {
-  const raw = localStorage.getItem("user");
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as StoredUser;
-  } catch {
-    return null;
-  }
-}
-
-function prettyNameFromEmail(email: string) {
-  const left = email.split("@")[0] || "Account";
-  return left
-    .replace(/[._-]+/g, " ")
-    .split(" ")
-    .filter(Boolean)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
-}
+import { findUser } from "@/utils/userStorage";
 
 export default function Login() {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      /**
-       * ✅ IMPORTANT:
-       * Replace ONLY this section with your real auth/API login.
-       * Requirements after successful login:
-       * - localStorage.setItem("token", token)
-       * - localStorage.setItem("user", JSON.stringify({ name, email, role }))
-       * - window.dispatchEvent(new Event("auth-changed"))
-       */
+      const user = findUser(email.trim(), password);
 
-      // ----- TEMP DEMO (remove when you wire real login) -----
-      if (!email || !password) throw new Error("Enter email and password");
+      if (!user) {
+        setError("Invalid email or password.");
+        setLoading(false);
+        return;
+      }
 
-      const token = "demo-token";
-      const role: Role = "customer"; // set from your backend response
-      const userToStore: StoredUser = {
-        name: prettyNameFromEmail(email), // replace with real name if you have it
-        email,
-        role,
-      };
+      // session
+      localStorage.setItem("token", "local-token");
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        })
+      );
 
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(userToStore));
-      // -------------------------------------------------------
-
-      // ✅ This fixes the “must refresh” issue
-      window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
-
-      const user = readUser();
-      const finalRole = (user?.role ?? "unknown") as Role;
-
-      if (finalRole === "entrepreneur") navigate("/dashboard/entrepreneur");
-      else if (finalRole === "admin") navigate("/admin");
+      // redirect based on role
+      if (user.role === "entrepreneur") navigate("/dashboard/entrepreneur");
+      else if (user.role === "admin") navigate("/admin");
       else navigate("/marketplace");
     } catch (err: any) {
-      setError(err?.message || "Login failed");
-    } finally {
+      console.error(err);
+      setError(err?.message || "Login failed.");
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center px-6 py-12">
-      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6">
-        <h1 className="text-2xl font-bold">Sign in</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Login with your email and password.
-        </p>
+    <div className="container mx-auto px-4 py-10">
+      <div className="max-w-md mx-auto bg-white border rounded-xl p-6 space-y-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold">Login</h1>
+          <p className="text-sm text-muted-foreground">
+            Login with the email you used to sign up.
+          </p>
+        </div>
 
         {error ? (
-          <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm">
+          <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
             {error}
           </div>
         ) : null}
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Email</label>
-            <Input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              type="email"
-              placeholder="you@example.com"
-              autoComplete="email"
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <Input
+            placeholder="Email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Password</label>
-            <Input
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              type={showPassword ? "text" : "password"}
-              placeholder="••••••••"
-              autoComplete="current-password"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((s) => !s)}
-              className="text-xs text-muted-foreground hover:underline"
-            >
-              {showPassword ? "Hide password" : "Show password"}
-            </button>
-          </div>
+          <Input
+            placeholder="Password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
 
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Signing in..." : "Login"}
+            {loading ? "Logging in..." : "Login"}
           </Button>
-
-          <div className="flex items-center justify-between text-sm">
-            <Link to="/forgot-password" className="text-primary hover:underline">
-              Forgot password?
-            </Link>
-            <Link to="/get-started" className="text-primary hover:underline">
-              Create account
-            </Link>
-          </div>
         </form>
+
+        <div className="text-sm text-muted-foreground">
+          Don&apos;t have an account?{" "}
+          <Link to="/get-started" className="underline">
+            Get started
+          </Link>
+        </div>
+
+        <div className="text-sm">
+          <Link to="/forgot-password" className="underline text-muted-foreground">
+            Forgot password?
+          </Link>
+        </div>
       </div>
     </div>
   );
