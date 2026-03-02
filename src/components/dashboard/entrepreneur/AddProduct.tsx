@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { addProduct } from "@/utils/productStorage";
+import { getSellerId, getSellerName } from "@/utils/authStorage";
 
 function makeId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -25,18 +26,9 @@ export default function AddProduct() {
     setSaving(true);
 
     try {
-      const userRaw = localStorage.getItem("user");
-      const user = userRaw ? JSON.parse(userRaw) : null;
-
-      if (!user) {
-        setError("You are not logged in. Please login again.");
-        setSaving(false);
-        return;
-      }
-
-      const sellerId = user.email || user.id || user.name;
+      const sellerId = getSellerId();
       if (!sellerId) {
-        setError("Account info incomplete. Please login again.");
+        setError("You are not logged in. Please login again.");
         setSaving(false);
         return;
       }
@@ -48,7 +40,7 @@ export default function AddProduct() {
         imageUrl: imageUrl.trim(),
         category: category.trim(),
         description: description.trim(),
-        seller: user.name || "Entrepreneur",
+        seller: getSellerName(),
         sellerId,
         createdAt: Date.now(),
       });
