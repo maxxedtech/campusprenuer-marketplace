@@ -19,8 +19,9 @@ export default function Index() {
                 <Link to="/login">Login</Link>
               </Button>
 
+              {/* ✅ changed from /get-started to your real signup route */}
               <Button asChild>
-                <Link to="/get-started">Get Started</Link>
+                <Link to="/signup/customer">Get Started</Link>
               </Button>
 
               <Button asChild variant="ghost">
@@ -32,7 +33,8 @@ export default function Index() {
           <div className="rounded-2xl border border-border bg-card p-6">
             <div className="text-sm text-muted-foreground">
               Tip: Entrepreneurs can list products, edit, delete, and manage all
-              their goods from <span className="font-medium">My Dashboard</span>.
+              their goods from{" "}
+              <span className="font-medium">My Dashboard</span>.
             </div>
           </div>
         </div>
