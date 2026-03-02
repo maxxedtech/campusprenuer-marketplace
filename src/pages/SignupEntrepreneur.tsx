@@ -4,8 +4,29 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 const AUTH_CHANGED_EVENT = "auth-changed";
+const USERS_KEY = "users_db";
 
-type Role = "entrepreneur" | "customer" | "admin" | "unknown";
+type Role = "entrepreneur" | "customer" | "admin";
+type StoredUser = {
+  name: string;
+  email: string;
+  role: Role;
+  password: string; // MVP only (do not do this in production)
+};
+
+function loadUsers(): StoredUser[] {
+  const raw = localStorage.getItem(USERS_KEY);
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw) as StoredUser[];
+  } catch {
+    return [];
+  }
+}
+
+function saveUsers(users: StoredUser[]) {
+  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+}
 
 export default function SignupEntrepreneur() {
   const navigate = useNavigate();
@@ -23,28 +44,35 @@ export default function SignupEntrepreneur() {
     setLoading(true);
 
     try {
-      /**
-       * ✅ If you have a backend:
-       * Replace this fake response with your API call,
-       * but keep the "success block" exactly the same.
-       */
+      const cleanName = fullName.trim();
+      const cleanEmail = email.trim().toLowerCase();
 
-      // --- FAKE SIGNUP (works immediately) ---
-      // In a real app, you would do:
-      // const res = await fetch("/api/signup/entrepreneur", { ... })
-      // const data = await res.json()
-      const token = "demo-token-" + Date.now();
-      const user = {
-        fullName,
-        email,
-        role: "entrepreneur" as Role,
+      if (!cleanName) throw new Error("Enter your full name");
+      if (!cleanEmail) throw new Error("Enter your email");
+      if (!password) throw new Error("Enter a password");
+
+      const users = loadUsers();
+      const exists = users.some((u) => u.email.toLowerCase() === cleanEmail);
+      if (exists) throw new Error("An account with this email already exists");
+
+      const newUser: StoredUser = {
+        name: cleanName,
+        email: cleanEmail,
+        role: "entrepreneur",
+        password,
       };
-      // --- END FAKE SIGNUP ---
 
-      // ✅ SUCCESS BLOCK (this is the important part)
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
+      users.push(newUser);
+      saveUsers(users);
+
+      // Create session
+      localStorage.setItem("token", "local-demo-token-" + Date.now());
+      localStorage.setItem(
+        "user",
+        JSON.stringify({ name: newUser.name, email: newUser.email, role: newUser.role })
+      );
       window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
+
       navigate("/dashboard/entrepreneur");
     } catch (err: any) {
       setError(err?.message || "Signup failed");
@@ -89,7 +117,7 @@ export default function SignupEntrepreneur() {
           />
 
           {error && (
-            <div className="text-sm text-red-500 border border-red-200 bg-red-50 rounded-xl p-3">
+            <div className="text-sm border border-destructive/30 bg-destructive/10 rounded-xl p-3">
               {error}
             </div>
           )}
@@ -97,6 +125,13 @@ export default function SignupEntrepreneur() {
           <Button type="submit" disabled={loading}>
             {loading ? "Creating account..." : "Create Account"}
           </Button>
+
+          <div className="text-sm text-muted-foreground">
+            Want to buy instead?{" "}
+            <Link className="underline hover:text-foreground" to="/signup/customer">
+              Sign up as Customer
+            </Link>
+          </div>
 
           <div className="text-sm text-muted-foreground">
             Already have an account?{" "}
