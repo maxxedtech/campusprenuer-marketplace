@@ -4,7 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 type Role = "entrepreneur" | "customer" | "admin" | "unknown";
-type StoredUser = { name?: string; email?: string; role?: Role };
+type StoredUser = { name?: string; fullName?: string; username?: string; email?: string; role?: Role };
+
+// MUST match Navbar
+const AUTH_CHANGED_EVENT = "auth-changed";
 
 function readUser(): StoredUser | null {
   const raw = localStorage.getItem("user");
@@ -16,9 +19,8 @@ function readUser(): StoredUser | null {
   }
 }
 
-function getDisplayName(email: string) {
+function prettyNameFromEmail(email: string) {
   const left = email.split("@")[0] || "Account";
-  // make it look nicer than raw email
   return left
     .replace(/[._-]+/g, " ")
     .split(" ")
@@ -42,31 +44,32 @@ export default function Login() {
     setLoading(true);
 
     try {
-      if (!email || !password) throw new Error("Enter email and password");
-
       /**
-       * ✅ Replace this block with your real API/auth call.
-       * The ONLY requirement is:
-       *  - localStorage.setItem("token", token)
-       *  - localStorage.setItem("user", JSON.stringify({ name, email, role }))
+       * ✅ IMPORTANT:
+       * Replace ONLY this section with your real auth/API login.
+       * Requirements after successful login:
+       * - localStorage.setItem("token", token)
+       * - localStorage.setItem("user", JSON.stringify({ name, email, role }))
+       * - window.dispatchEvent(new Event("auth-changed"))
        */
 
-      // ---- TEMP demo storage (so everything works immediately) ----
-      const token = "demo-token";
-      const role: Role = "customer"; // change when your real backend returns role
+      // ----- TEMP DEMO (remove when you wire real login) -----
+      if (!email || !password) throw new Error("Enter email and password");
 
+      const token = "demo-token";
+      const role: Role = "customer"; // set from your backend response
       const userToStore: StoredUser = {
-        name: getDisplayName(email),
+        name: prettyNameFromEmail(email), // replace with real name if you have it
         email,
         role,
       };
 
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(userToStore));
-      // ------------------------------------------------------------
+      // -------------------------------------------------------
 
-      // ✅ this makes Navbar update immediately (no refresh)
-      window.dispatchEvent(new Event("auth:changed"));
+      // ✅ This fixes the “must refresh” issue
+      window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
 
       const user = readUser();
       const finalRole = (user?.role ?? "unknown") as Role;
