@@ -2,9 +2,18 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
 export default function Index() {
+  // ✅ Get the user name from localStorage (if available)
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const name = user.name || "Entrepreneur";
+
   return (
     <div className="min-h-[calc(100vh-5rem)]">
-      {/* HERO (matches the old centered landing) */}
+      {/* WELCOME MESSAGE */}
+      <div className="mb-6 px-6 text-2xl font-bold">
+        👋 Welcome back, {name}!
+      </div>
+
+      {/* HERO SECTION */}
       <section className="px-6 pt-10 pb-12">
         <div className="max-w-6xl mx-auto">
           <div className="rounded-3xl border border-border bg-gradient-to-br from-muted/40 via-background to-muted/30 overflow-hidden">
@@ -49,7 +58,7 @@ export default function Index() {
         </div>
       </section>
 
-      {/* OPTIONAL: quick feature row under hero (clean, like a real landing) */}
+      {/* QUICK FEATURE ROW */}
       <section className="px-6 pb-14">
         <div className="max-w-6xl mx-auto">
           <div className="grid gap-6 md:grid-cols-3">
