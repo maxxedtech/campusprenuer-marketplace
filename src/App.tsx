@@ -105,21 +105,22 @@ export default function App() {
             </RequireAuth>
           }
         />
+<Route
+  path="/dashboard/entrepreneur"
+  element={
+    <RequireAuth allow={["entrepreneur"]}>
+      <EntrepreneurDashboard />
+    </RequireAuth>
+  }
+>
+  <Route index element={<DashboardHome />} />
+  <Route path="add" element={<AddProduct />} />
+  <Route path="products" element={<MyProducts />} />
+  <Route path="products/:id/edit" element={<EditProduct />} />
 
-        {/* ✅ Entrepreneur Dashboard (Nested Routes) */}
-        <Route
-          path="/dashboard/entrepreneur"
-          element={
-            <RequireAuth allow={["entrepreneur"]}>
-              <EntrepreneurDashboard />
-            </RequireAuth>
-          }
-        >
-          <Route index element={<DashboardHome />} />
-          <Route path="add" element={<AddProduct />} />
-          <Route path="products" element={<MyProducts />} />
-          <Route path="products/:id/edit" element={<EditProduct />} />
-        </Route>
+  {/* ✅ Product Detail */}
+  <Route path="product/:id" element={<ProductDetail />} />
+</Route>
 
         <Route
           path="/admin"
