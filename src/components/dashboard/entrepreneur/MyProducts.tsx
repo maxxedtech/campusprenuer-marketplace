@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -12,6 +12,7 @@ import { getSellerId } from "@/utils/authStorage";
 export default function MyProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [error, setError] = useState("");
+  const navigate = useNavigate(); // ✅ Added navigate
 
   const load = () => {
     const sellerId = getSellerId();
@@ -48,11 +49,11 @@ export default function MyProducts() {
         </Link>
       </div>
 
-      {error ? (
+      {error && (
         <div className="bg-white border rounded-xl p-6 text-sm text-red-600">
           {error}
         </div>
-      ) : null}
+      )}
 
       {products.length === 0 ? (
         <div className="bg-white border rounded-xl p-6 text-sm text-muted-foreground">
@@ -64,15 +65,27 @@ export default function MyProducts() {
             <Card key={p.id}>
               <CardContent className="p-4 space-y-3">
                 {/* ✅ Photo preview */}
-                {p.imageUrl ? (
+                {p.imageUrl && (
                   <img
                     src={p.imageUrl}
                     alt={p.name}
                     className="w-full h-44 object-cover rounded-lg border"
                     loading="lazy"
                   />
-                ) : null}
+                )}
 
+                {/* ✅ View / Chat button */}
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() =>
+                    navigate(`/dashboard/entrepreneur/product/${p.id}`)
+                  }
+                >
+                  View / Chat
+                </Button>
+
+                {/* Product info */}
                 <div className="space-y-1">
                   <div className="font-semibold text-lg">{p.name}</div>
                   <div className="text-sm text-muted-foreground">
@@ -85,6 +98,7 @@ export default function MyProducts() {
                   {p.description}
                 </div>
 
+                {/* Edit / Delete buttons */}
                 <div className="flex gap-2">
                   <Link to={`/dashboard/entrepreneur/products/${p.id}/edit`}>
                     <Button variant="outline">Edit</Button>
