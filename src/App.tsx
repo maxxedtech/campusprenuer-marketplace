@@ -13,8 +13,7 @@ import SignupEntrepreneur from "@/pages/SignupEntrepreneur";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/NotFound";
-
-// ✅ Dashboard components (YOUR PATH)
+import ProductDetail from "@/components/dashboard/entrepreneur/ProductDetail";
 import EntrepreneurDashboard from "@/components/dashboard/EntrepreneurDashboard";
 import DashboardHome from "@/components/dashboard/entrepreneur/DashboardHome";
 import AddProduct from "@/components/dashboard/entrepreneur/AddProduct";
