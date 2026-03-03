@@ -9,7 +9,7 @@ function makeId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-// Convert image file -> resized base64 (keeps storage smaller)
+// Convert image file -> resized base64
 async function fileToResizedDataUrl(file: File, maxSize = 900, quality = 0.75) {
   const dataUrl: string = await new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -37,8 +37,6 @@ async function fileToResizedDataUrl(file: File, maxSize = 900, quality = 0.75) {
   if (!ctx) return dataUrl;
 
   ctx.drawImage(img, 0, 0, w, h);
-
-  // Use jpeg to reduce size (png can be huge)
   return canvas.toDataURL("image/jpeg", quality);
 }
 
@@ -65,7 +63,6 @@ export default function AddProduct() {
       return;
     }
 
-    // basic validation
     if (!file.type.startsWith("image/")) {
       setImageError("Please select an image file.");
       return;
@@ -89,6 +86,13 @@ export default function AddProduct() {
     setError("");
     setSaving(true);
 
+    // ✅ NEW: check if image exists
+    if (!imageDataUrl) {
+      setImageError("Please upload at least one product image.");
+      setSaving(false);
+      return;
+    }
+
     try {
       const sellerId = getSellerId();
       if (!sellerId) {
@@ -101,7 +105,7 @@ export default function AddProduct() {
         id: makeId(),
         name: name.trim(),
         price: price.trim(),
-        imageUrl: imageDataUrl || "", // base64 stored here
+        imageUrl: imageDataUrl,
         category: category.trim(),
         description: description.trim(),
         seller: getSellerName(),
@@ -142,17 +146,15 @@ export default function AddProduct() {
           required
         />
 
-        {/* ✅ Image Upload */}
+        {/* ✅ Image Upload (REQUIRED now) */}
         <div className="space-y-2">
-          <div className="text-sm font-medium">Product Photo (optional)</div>
+          <div className="text-sm font-medium">Product Photo *</div>
           <Input
             type="file"
             accept="image/*"
             onChange={(e) => handlePickImage(e.target.files?.[0] || null)}
           />
-          {imageError ? (
-            <div className="text-sm text-red-600">{imageError}</div>
-          ) : null}
+          {imageError ? <div className="text-sm text-red-600">{imageError}</div> : null}
 
           {preview ? (
             <div className="border rounded-xl p-2">
