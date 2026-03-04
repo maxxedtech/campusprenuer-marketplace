@@ -1,7 +1,7 @@
-import React from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import AppLayout from "@/components/layout/AppLayout";
+import RequireAuth from "@/components/RequireAuth";
 
 import Index from "@/pages/Index";
 import GetStarted from "@/pages/GetStarted";
@@ -22,50 +22,16 @@ import AddProduct from "@/components/dashboard/entrepreneur/AddProduct";
 import MyProducts from "@/components/dashboard/entrepreneur/MyProducts";
 import EditProduct from "@/components/dashboard/entrepreneur/EditProduct";
 
-type Role = "entrepreneur" | "customer" | "admin" | "unknown";
-type StoredUser = { role?: Role; name?: string; email?: string } | null;
-
-function readAuth() {
-  const userRaw = localStorage.getItem("user");
-  let user: StoredUser = null;
-
-  if (userRaw) {
-    try {
-      user = JSON.parse(userRaw);
-    } catch {
-      user = null;
-    }
-  }
-
-  const role = (user?.role ?? "unknown") as Role;
-
-  // ✅ Stable login signal for your current localStorage approach
-  const isLoggedIn = Boolean(user && role !== "unknown");
-
-  return { user, role, isLoggedIn };
-}
-
-function RequireAuth({
-  children,
-  allow,
-}: {
-  children: React.ReactNode;
-  allow?: Role[];
-}) {
-  const { isLoggedIn, role } = readAuth();
-
-  if (!isLoggedIn) return <Navigate to="/login" replace />;
-  if (allow && !allow.includes(role)) return <Navigate to="/account" replace />;
-
-  return <>{children}</>;
-}
+import { useAuth } from "@/contexts/AuthContext";
 
 function AccountRedirect() {
-  const { isLoggedIn, role } = readAuth();
+  const { user, loading } = useAuth();
 
-  if (!isLoggedIn) return <Navigate to="/login" replace />;
-  if (role === "entrepreneur") return <Navigate to="/dashboard/entrepreneur" replace />;
-  if (role === "admin") return <Navigate to="/admin" replace />;
+  if (loading) return <div className="p-6">Loading...</div>;
+  if (!user) return <Navigate to="/login" replace />;
+
+  if (user.role === "entrepreneur") return <Navigate to="/dashboard/entrepreneur" replace />;
+  if (user.role === "admin") return <Navigate to="/admin" replace />;
   return <Navigate to="/marketplace" replace />;
 }
 
@@ -84,45 +50,32 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
-        {/* ✅ PUBLIC marketplace so visitors can browse */}
+        {/* ✅ Marketplace is PUBLIC */}
         <Route path="/marketplace" element={<Marketplace />} />
 
         {/* Redirect helper */}
         <Route path="/account" element={<AccountRedirect />} />
 
-        {/* ✅ Protected */}
-        <Route
-          path="/chat"
-          element={
-            <RequireAuth>
-              <ChatPage />
-            </RequireAuth>
-          }
-        />
-
-        <Route
-          path="/dashboard/entrepreneur"
-          element={
-            <RequireAuth allow={["entrepreneur"]}>
-              <EntrepreneurDashboard />
-            </RequireAuth>
-          }
-        >
-          <Route index element={<DashboardHome />} />
-          <Route path="add" element={<AddProduct />} />
-          <Route path="products" element={<MyProducts />} />
-          <Route path="products/:id/edit" element={<EditProduct />} />
-          <Route path="product/:id" element={<ProductDetail />} />
+        {/* ✅ Protected: Chat */}
+        <Route element={<RequireAuth />}>
+          <Route path="/chat" element={<ChatPage />} />
         </Route>
 
-        <Route
-          path="/admin"
-          element={
-            <RequireAuth allow={["admin"]}>
-              <AdminPanel />
-            </RequireAuth>
-          }
-        />
+        {/* ✅ Protected: Entrepreneur Dashboard */}
+        <Route element={<RequireAuth allow={["entrepreneur"]} />}>
+          <Route path="/dashboard/entrepreneur" element={<EntrepreneurDashboard />}>
+            <Route index element={<DashboardHome />} />
+            <Route path="add" element={<AddProduct />} />
+            <Route path="products" element={<MyProducts />} />
+            <Route path="products/:id/edit" element={<EditProduct />} />
+            <Route path="product/:id" element={<ProductDetail />} />
+          </Route>
+        </Route>
+
+        {/* ✅ Protected: Admin */}
+        <Route element={<RequireAuth allow={["admin"]} />}>
+          <Route path="/admin" element={<AdminPanel />} />
+        </Route>
 
         {/* Fallback */}
         <Route path="*" element={<NotFound />} />
