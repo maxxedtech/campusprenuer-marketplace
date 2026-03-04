@@ -1,16 +1,22 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
 const EntrepreneurDashboard = () => {
+  const navigate = useNavigate();
+
+  const logout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    navigate("/", { replace: true });
+  };
+
   return (
     <div className="min-h-[calc(100vh-64px)] grid grid-cols-1 md:grid-cols-[260px_1fr]">
       {/* Sidebar */}
       <aside className="border-r bg-white">
         <div className="p-4 border-b">
           <div className="font-semibold text-lg">Entrepreneur Dashboard</div>
-          <div className="text-sm text-muted-foreground">
-            Manage your products
-          </div>
+          <div className="text-sm text-muted-foreground">Manage your products</div>
         </div>
 
         <nav className="p-3 flex flex-col gap-1">
@@ -49,15 +55,7 @@ const EntrepreneurDashboard = () => {
           </NavLink>
 
           <div className="mt-4 px-3">
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => {
-                localStorage.removeItem("token");
-                localStorage.removeItem("user");
-                window.location.href = "/";
-              }}
-            >
+            <Button variant="outline" className="w-full" onClick={logout}>
               Logout
             </Button>
           </div>
@@ -66,7 +64,6 @@ const EntrepreneurDashboard = () => {
 
       {/* Main */}
       <main className="p-4 md:p-6 bg-gray-50">
-        {/* ✅ THIS IS WHAT MAKES NESTED ROUTES SHOW */}
         <Outlet />
       </main>
     </div>
