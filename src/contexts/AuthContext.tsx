@@ -1,148 +1,95 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-} from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-const API_URL = "https://townketbackend.onrender.com";
+export type Role = "customer" | "entrepreneur" | "admin";
 
-type AuthState = {
-  user: any;
-  token: string | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
+export type StoredUser = {
+  id?: string;
+  name: string;
+  role: Role;
+  email?: string;
 };
 
-type AuthContextType = AuthState & {
-  login: (email: string, password: string) => Promise<any>;
-  signup: (
-    name: string,
-    email: string,
-    password: string,
-    role: string
-  ) => Promise<any>;
+type AuthContextValue = {
+  user: StoredUser | null;
+  loading: boolean;
+  signup: (u: StoredUser) => Promise<StoredUser>;
+  login: (email: string, password: string) => Promise<StoredUser>;
+  logout: () => void;
+  setUser: React.Dispatch<React.SetStateAction<StoredUser | null>>;
 };
 
-const AuthContext = createContext<AuthContextType | null>(null);
+const AUTH_KEY = "campusprenuer_user";
 
-export const AuthProvider = ({
-  children,
-}: {
-  children: React.ReactNode;
-}) => {
-  const [state, setState] = useState<AuthState>(() => {
-    const storedUser = localStorage.getItem("user");
-    const storedToken = localStorage.getItem("token");
+const AuthContext = createContext<AuthContextValue | null>(null);
 
-    return {
-      user: storedUser ? JSON.parse(storedUser) : null,
-      token: storedToken,
-      isAuthenticated: !!storedToken,
-      isLoading: false,
-    };
-  });
-
-  // ================= LOGIN =================
-
-const login = useCallback(async (email: string, password: string) => {
-  setState((prev) => ({ ...prev, isLoading: true }));
-
+function safeParseUser(raw: string | null): StoredUser | null {
+  if (!raw) return null;
   try {
-    const response = await fetch(`${API_URL}/api/auth/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email, password }),
-    });
+    const parsed = JSON.parse(raw) as StoredUser;
+    // basic validation so we don’t treat garbage as a real user
+    if (!parsed || typeof parsed !== "object") return null;
+    if (!parsed.role || !parsed.name) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
 
-    const data = await response.json();
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [user, setUser] = useState<StoredUser | null>(null);
+  const [loading, setLoading] = useState(true);
 
-    if (!response.ok) {
-      throw new Error(data?.message || "Login failed");
+  // ✅ Rehydrate on app start (prevents dashboard kicking you out on refresh)
+  useEffect(() => {
+    const stored = safeParseUser(localStorage.getItem(AUTH_KEY));
+    setUser(stored);
+    setLoading(false);
+  }, []);
+
+  const signup = async (u: StoredUser) => {
+    // NOTE: for demo/localStorage only. Replace with backend later.
+    localStorage.setItem(AUTH_KEY, JSON.stringify(u));
+    setUser(u);
+    return u;
+  };
+
+  const login = async (email: string, _password: string) => {
+    // NOTE: for demo/localStorage only. Replace with backend later.
+    const stored = safeParseUser(localStorage.getItem(AUTH_KEY));
+    if (!stored) throw new Error("No account found. Please sign up first.");
+
+    // If you store email, enforce it
+    if (stored.email && stored.email !== email) {
+      throw new Error("Account not found for this email.");
     }
 
-    // ✅ SAVE TO LOCAL STORAGE
-    localStorage.setItem("user", JSON.stringify(data.user));
-    localStorage.setItem("token", data.token);
+    localStorage.setItem(AUTH_KEY, JSON.stringify(stored));
+    setUser(stored);
+    return stored;
+  };
 
-    setState({
-      user: data.user,
-      token: data.token,
-      isAuthenticated: true,
-      isLoading: false,
-    });
+  const logout = () => {
+    localStorage.removeItem(AUTH_KEY);
+    setUser(null);
+  };
 
-    return data.user; // important
-  } catch (error: any) {
-    setState((prev) => ({ ...prev, isLoading: false }));
-    throw new Error(error?.message || "Something went wrong");
-  }
-}, []);
-  // ================= SIGNUP =================
-  const signup = useCallback(
-    async (
-      name: string,
-      email: string,
-      password: string,
-      role: string
-    ) => {
-      setState((prev) => ({ ...prev, isLoading: true }));
-
-      try {
-        const response = await fetch(`${API_URL}/api/auth/register`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            username: name,
-            email,
-            password,
-            role,
-          }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data?.message || "Signup failed");
-        }
-
-        // ✅ SAVE TO LOCAL STORAGE
-        localStorage.setItem("user", JSON.stringify(data.user));
-        localStorage.setItem("token", data.token);
-
-        setState({
-          user: data.user,
-          token: data.token,
-          isAuthenticated: true,
-          isLoading: false,
-        });
-
-        return data.user;
-      } catch (error: any) {
-        setState((prev) => ({ ...prev, isLoading: false }));
-        throw new Error(error?.message || "Something went wrong");
-      }
-    },
-    []
+  const value = useMemo(
+    () => ({
+      user,
+      loading,
+      signup,
+      login,
+      logout,
+      setUser,
+    }),
+    [user, loading]
   );
 
-  return (
-    <AuthContext.Provider value={{ ...state, login, signup }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within <AuthProvider />");
+  return ctx;
 };
