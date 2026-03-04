@@ -37,15 +37,12 @@ function readAuth() {
     }
   }
 
-  // Token is optional for now (since you’re doing localStorage auth)
-  const token = localStorage.getItem("token");
-
   const role = (user?.role ?? "unknown") as Role;
 
-  // ✅ Treat user existence as logged in (token optional)
+  // ✅ Stable login signal for your current localStorage approach
   const isLoggedIn = Boolean(user && role !== "unknown");
 
-  return { token, user, role, isLoggedIn };
+  return { user, role, isLoggedIn };
 }
 
 function RequireAuth({
@@ -87,7 +84,7 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
-        {/* ✅ Marketplace should be public so visitors can browse */}
+        {/* ✅ PUBLIC marketplace so visitors can browse */}
         <Route path="/marketplace" element={<Marketplace />} />
 
         {/* Redirect helper */}
