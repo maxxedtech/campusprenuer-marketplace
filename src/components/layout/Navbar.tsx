@@ -8,32 +8,34 @@ export default function Navbar() {
 
   const handleLogout = () => {
     logout();
-    navigate("/");
+    navigate("/", { replace: true });
   };
 
   return (
     <header className="w-full border-b bg-white">
       <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
-        {/* Left: Brand */}
         <Link to="/" className="font-bold text-lg">
           CampusPrenuer
         </Link>
 
-        {/* Middle: Links */}
         <nav className="hidden md:flex items-center gap-6 text-sm">
           <Link to="/marketplace" className="opacity-80 hover:opacity-100">
             Marketplace
           </Link>
 
-          {/* Only show dashboard link if logged in */}
           {user?.role === "entrepreneur" ? (
             <Link to="/dashboard/entrepreneur" className="opacity-80 hover:opacity-100">
               Dashboard
             </Link>
           ) : null}
+
+          {user?.role === "admin" ? (
+            <Link to="/admin" className="opacity-80 hover:opacity-100">
+              Admin
+            </Link>
+          ) : null}
         </nav>
 
-        {/* Right: Auth area */}
         <div className="flex items-center gap-2">
           {loading ? null : !user ? (
             <>
