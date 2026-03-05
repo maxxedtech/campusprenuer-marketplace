@@ -4,6 +4,10 @@ import React, { useEffect } from "react";
 
 import AppLayout from "@/components/layout/AppLayout";
 
+import Cart from "@/pages/Cart";
+import Orders from "@/pages/Orders";
+import EntrepreneurOrders from "@/components/dashboard/entrepreneur/Orders";
+
 import Index from "@/pages/Index";
 import GetStarted from "@/pages/GetStarted";
 import Login from "@/pages/Login";
@@ -91,6 +95,23 @@ export default function App() {
           element={
             <RequireAuth>
               <Marketplace />
+              <Route
+  path="/cart"
+  element={
+    <RequireAuth allow={["customer"]}>
+      <Cart />
+    </RequireAuth>
+  }
+/>
+
+<Route
+  path="/orders"
+  element={
+    <RequireAuth allow={["customer"]}>
+      <Orders />
+    </RequireAuth>
+  }
+/>
             </RequireAuth>
           }
         />
