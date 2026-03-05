@@ -7,6 +7,7 @@ import AppLayout from "@/components/layout/AppLayout";
 import Cart from "@/pages/Cart";
 import Orders from "@/pages/Orders";
 import EntrepreneurOrders from "@/components/dashboard/entrepreneur/Orders";
+import ProductView from "@/pages/ProductView";
 
 import Index from "@/pages/Index";
 import GetStarted from "@/pages/GetStarted";
@@ -79,6 +80,7 @@ export default function App() {
 
         {/* ✅ Secret admin login page (only reachable via 3-click login OR direct URL) */}
         <Route path="/admin-login" element={<AdminLogin />} />
+        
 
         <Route path="/signup/customer" element={<SignupCustomer />} />
         <Route path="/signup/entrepreneur" element={<SignupEntrepreneur />} />
@@ -90,6 +92,14 @@ export default function App() {
         <Route path="/account" element={<AccountRedirect />} />
 
         {/* Protected */}
+      <Route
+  path="/product/:id"
+  element={
+    <RequireAuth allow={["customer"]}>
+      <ProductView />
+    </RequireAuth>
+  }
+/>
         <Route
           path="/marketplace"
           element={
