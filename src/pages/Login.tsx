@@ -1,59 +1,75 @@
+// src/pages/Login.tsx
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useAuth, Role } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Login() {
-  const navigate = useNavigate();
-  const { loginLocal } = useAuth();
+  const { login } = useAuth();
+  const nav = useNavigate();
 
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<Role>("customer");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleLogin = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     setLoading(true);
 
-    loginLocal({
-      id: String(Date.now()),
-      name: name || "User",
-      email,
-      role,
-    });
+    try {
+      const u = await login(email, password);
 
-    if (role === "entrepreneur") navigate("/dashboard/entrepreneur", { replace: true });
-    else if (role === "admin") navigate("/admin", { replace: true });
-    else navigate("/marketplace", { replace: true });
+      if (u.role === "admin") nav("/admin");
+      else if (u.role === "entrepreneur") nav("/dashboard/entrepreneur");
+      else nav("/marketplace");
+    } catch (err: any) {
+      setError(err?.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="max-w-md mx-auto p-6">
-      <h1 className="text-xl font-bold mb-4">Login</h1>
+    <div className="mx-auto max-w-md px-4 py-10">
+      <h1 className="text-2xl font-semibold">Login</h1>
+      <p className="text-sm text-gray-600 mt-1">Welcome back. Enter your details to continue.</p>
 
-      <form onSubmit={handleLogin} className="space-y-3">
-        <Input placeholder="Name (for demo)" value={name} onChange={(e) => setName(e.target.value)} />
-        <Input placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+      <form onSubmit={onSubmit} className="mt-6 space-y-4">
+        {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
         <div className="space-y-2">
-          <label className="text-sm opacity-80">Role (demo)</label>
-          <select className="w-full border rounded-md p-2" value={role} onChange={(e) => setRole(e.target.value as Role)}>
-            <option value="customer">Customer</option>
-            <option value="entrepreneur">Entrepreneur</option>
-            <option value="admin">Admin</option>
-          </select>
+          <label className="text-sm font-medium">Email</label>
+          <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" />
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Password</label>
+          <Input
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Your password"
+            type="password"
+          />
         </div>
 
         <Button className="w-full" disabled={loading}>
           {loading ? "Logging in..." : "Login"}
         </Button>
-      </form>
 
-      <p className="mt-4 text-sm opacity-80">
-        New here? <Link to="/get-started" className="underline">Get Started</Link>
-      </p>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-gray-600">New here?</span>
+          <Link to="/signup" className="text-blue-600 hover:underline">
+            Create account
+          </Link>
+        </div>
+
+        <p className="text-xs text-gray-500">
+          Tip: Admin login is hidden. Click the Navbar “Login” button 3 times quickly.
+        </p>
+      </form>
     </div>
   );
 }
