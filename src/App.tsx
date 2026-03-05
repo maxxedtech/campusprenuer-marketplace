@@ -1,101 +1,147 @@
 // src/App.tsx
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
-import Navbar from "@/components/Navbar";
-import ProtectedRoute from "@/components/ProtectedRoute";
+import { Navigate, Route, Routes } from "react-router-dom";
+import React, { useEffect } from "react";
 
-// pages
+import AppLayout from "@/components/layout/AppLayout";
+
+import Index from "@/pages/Index";
+import GetStarted from "@/pages/GetStarted";
 import Login from "@/pages/Login";
-import Signup from "@/pages/Signup";
+import Marketplace from "@/pages/Marketplace";
+import AdminPanel from "@/pages/AdminPanel";
+import ChatPage from "@/pages/ChatPage";
+import SignupCustomer from "@/pages/SignupCustomer";
+import SignupEntrepreneur from "@/pages/SignupEntrepreneur";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
+import NotFound from "@/pages/NotFound";
+
 import AdminLogin from "@/pages/AdminLogin";
 import Settings from "@/pages/Settings";
 
-// Replace these with your real pages if you already have them:
-function Home() {
-  return (
-    <div className="mx-auto max-w-6xl px-4 py-10">
-      <h1 className="text-3xl font-semibold">CampusPrenuer</h1>
-      <p className="text-gray-600 mt-2">Buy, sell, and connect on campus.</p>
-    </div>
-  );
+// ✅ Dashboard components
+import EntrepreneurDashboard from "@/components/dashboard/EntrepreneurDashboard";
+import DashboardHome from "@/components/dashboard/entrepreneur/DashboardHome";
+import AddProduct from "@/components/dashboard/entrepreneur/AddProduct";
+import MyProducts from "@/components/dashboard/entrepreneur/MyProducts";
+import EditProduct from "@/components/dashboard/entrepreneur/EditProduct";
+import ProductDetail from "@/pages/dashboard/entrepreneur/ProductDetail";
+
+import { ensureAdminSeeded, readAuth } from "@/lib/authStorage";
+
+type Role = "entrepreneur" | "customer" | "admin" | "unknown";
+
+function RequireAuth({
+  children,
+  allow,
+}: {
+  children: React.ReactNode;
+  allow?: Role[];
+}) {
+  const { token, user } = readAuth();
+  const isLoggedIn = Boolean(token && user);
+  const role = (user?.role ?? "unknown") as Role;
+
+  if (!isLoggedIn) return <Navigate to="/login" replace />;
+  if (allow && !allow.includes(role)) return <Navigate to="/account" replace />;
+
+  return <>{children}</>;
 }
-function Marketplace() {
-  return (
-    <div className="mx-auto max-w-6xl px-4 py-10">
-      <h1 className="text-2xl font-semibold">Marketplace</h1>
-      <p className="text-gray-600 mt-2">Your listings will show here.</p>
-    </div>
-  );
-}
-function EntrepreneurDashboard() {
-  return (
-    <div className="mx-auto max-w-6xl px-4 py-10">
-      <h1 className="text-2xl font-semibold">Entrepreneur Dashboard</h1>
-      <p className="text-gray-600 mt-2">Manage your products and orders here.</p>
-    </div>
-  );
-}
-function AdminPanel() {
-  return (
-    <div className="mx-auto max-w-6xl px-4 py-10">
-      <h1 className="text-2xl font-semibold">Admin Panel</h1>
-      <p className="text-gray-600 mt-2">Restricted.</p>
-    </div>
-  );
+
+function AccountRedirect() {
+  const { token, user } = readAuth();
+  const isLoggedIn = Boolean(token && user);
+  const role = (user?.role ?? "unknown") as Role;
+
+  if (!isLoggedIn) return <Navigate to="/login" replace />;
+  if (role === "entrepreneur")
+    return <Navigate to="/dashboard/entrepreneur" replace />;
+  if (role === "admin") return <Navigate to="/admin" replace />;
+  return <Navigate to="/marketplace" replace />;
 }
 
 export default function App() {
+  useEffect(() => {
+    ensureAdminSeeded();
+  }, []);
+
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Navbar />
+    <Routes>
+      <Route element={<AppLayout />}>
+        {/* Public */}
+        <Route path="/" element={<Index />} />
+        <Route path="/get-started" element={<GetStarted />} />
+        <Route path="/login" element={<Login />} />
 
-        <Routes>
-          <Route path="/" element={<Home />} />
+        {/* ✅ Secret admin login page (only reachable via 3-click login OR direct URL) */}
+        <Route path="/admin-login" element={<AdminLogin />} />
 
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
+        <Route path="/signup/customer" element={<SignupCustomer />} />
+        <Route path="/signup/entrepreneur" element={<SignupEntrepreneur />} />
 
-          {/* secret admin route */}
-          <Route path="/admin-login" element={<AdminLogin />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
-          {/* protected routes */}
-          <Route
-            path="/marketplace"
-            element={
-              <ProtectedRoute>
-                <Marketplace />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard/entrepreneur"
-            element={
-              <ProtectedRoute allow={["entrepreneur"]}>
-                <EntrepreneurDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute allow={["admin"]}>
-                <AdminPanel />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <ProtectedRoute>
-                <Settings />
-              </ProtectedRoute>
-            }
-          />
+        {/* Redirect helper */}
+        <Route path="/account" element={<AccountRedirect />} />
 
-          <Route path="*" element={<Home />} />
-        </Routes>
-      </AuthProvider>
-    </BrowserRouter>
+        {/* Protected */}
+        <Route
+          path="/marketplace"
+          element={
+            <RequireAuth>
+              <Marketplace />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/chat"
+          element={
+            <RequireAuth>
+              <ChatPage />
+            </RequireAuth>
+          }
+        />
+
+        {/* ✅ Settings (delete account lives here) */}
+        <Route
+          path="/settings"
+          element={
+            <RequireAuth>
+              <Settings />
+            </RequireAuth>
+          }
+        />
+
+        {/* ✅ Entrepreneur Dashboard (Nested Routes) */}
+        <Route
+          path="/dashboard/entrepreneur"
+          element={
+            <RequireAuth allow={["entrepreneur"]}>
+              <EntrepreneurDashboard />
+            </RequireAuth>
+          }
+        >
+          <Route index element={<DashboardHome />} />
+          <Route path="add" element={<AddProduct />} />
+          <Route path="products" element={<MyProducts />} />
+          <Route path="products/:id/edit" element={<EditProduct />} />
+          <Route path="product/:id" element={<ProductDetail />} />
+        </Route>
+
+        {/* Admin */}
+        <Route
+          path="/admin"
+          element={
+            <RequireAuth allow={["admin"]}>
+              <AdminPanel />
+            </RequireAuth>
+          }
+        />
+
+        {/* Fallback */}
+        <Route path="*" element={<NotFound />} />
+      </Route>
+    </Routes>
   );
 }
