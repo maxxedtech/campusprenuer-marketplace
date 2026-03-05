@@ -1,5 +1,4 @@
-// src/pages/AdminLogin.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,22 +11,25 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Block direct access on page load
+  useEffect(() => {
+    const intent = sessionStorage.getItem("cp_admin_intent");
+    if (!intent) {
+      window.location.href = "/login";
+    }
+  }, []);
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const intent = sessionStorage.getItem("cp_admin_intent");
-if (!intent) {
-  // block direct access
-  window.location.href = "/login";
-}
-sessionStorage.removeItem("cp_admin_intent");
 
     try {
       const user = loginDbUser(email, password);
       if (user.role !== "admin") throw new Error("Not an admin account");
 
       setSession(user);
+      sessionStorage.removeItem("cp_admin_intent");
       nav("/admin");
     } catch (err: any) {
       setError(err?.message || "Admin login failed");
