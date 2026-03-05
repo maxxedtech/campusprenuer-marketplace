@@ -1,4 +1,3 @@
-// src/pages/Orders.tsx
 import { useMemo } from "react";
 import { readAuth } from "@/lib/authStorage";
 import { ordersForCustomer } from "@/lib/ordersStorage";
@@ -21,6 +20,7 @@ export default function Orders() {
                 <div className="font-semibold">Order #{o.id.slice(0, 8)}</div>
                 <div className="text-sm rounded-full border px-2 py-1">{o.status}</div>
               </div>
+
               <div className="text-sm text-gray-600 mt-1">
                 Total: ₦{o.total.toLocaleString()} • Items: {o.items.length}
               </div>
@@ -28,7 +28,7 @@ export default function Orders() {
               <ul className="mt-3 text-sm list-disc pl-5">
                 {o.items.map((i) => (
                   <li key={i.productId}>
-                    {i.title} × {i.qty} (₦{i.price.toLocaleString()} each)
+                    {i.name} × {i.qty}
                   </li>
                 ))}
               </ul>
