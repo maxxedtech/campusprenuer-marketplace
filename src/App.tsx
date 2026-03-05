@@ -1,85 +1,101 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+// src/App.tsx
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import Navbar from "@/components/Navbar";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
-import AppLayout from "@/components/layout/AppLayout";
-import RequireAuth from "@/components/RequireAuth";
-
-import Index from "@/pages/Index";
-import GetStarted from "@/pages/GetStarted";
+// pages
 import Login from "@/pages/Login";
-import Marketplace from "@/pages/Marketplace";
-import AdminPanel from "@/pages/AdminPanel";
-import ChatPage from "@/pages/ChatPage";
-import SignupCustomer from "@/pages/SignupCustomer";
-import SignupEntrepreneur from "@/pages/SignupEntrepreneur";
-import ForgotPassword from "@/pages/ForgotPassword";
-import ResetPassword from "@/pages/ResetPassword";
-import NotFound from "@/pages/NotFound";
+import Signup from "@/pages/Signup";
+import AdminLogin from "@/pages/AdminLogin";
+import Settings from "@/pages/Settings";
 
-import ProductDetail from "@/components/dashboard/entrepreneur/ProductDetail";
-import EntrepreneurDashboard from "@/components/dashboard/EntrepreneurDashboard";
-import DashboardHome from "@/components/dashboard/entrepreneur/DashboardHome";
-import AddProduct from "@/components/dashboard/entrepreneur/AddProduct";
-import MyProducts from "@/components/dashboard/entrepreneur/MyProducts";
-import EditProduct from "@/components/dashboard/entrepreneur/EditProduct";
-
-import { useAuth } from "@/contexts/AuthContext";
-
-function AccountRedirect() {
-  const { user, loading } = useAuth();
-
-  if (loading) return <div className="p-6">Loading...</div>;
-  if (!user) return <Navigate to="/login" replace />;
-
-  if (user.role === "entrepreneur") return <Navigate to="/dashboard/entrepreneur" replace />;
-  if (user.role === "admin") return <Navigate to="/admin" replace />;
-  return <Navigate to="/marketplace" replace />;
+// Replace these with your real pages if you already have them:
+function Home() {
+  return (
+    <div className="mx-auto max-w-6xl px-4 py-10">
+      <h1 className="text-3xl font-semibold">CampusPrenuer</h1>
+      <p className="text-gray-600 mt-2">Buy, sell, and connect on campus.</p>
+    </div>
+  );
+}
+function Marketplace() {
+  return (
+    <div className="mx-auto max-w-6xl px-4 py-10">
+      <h1 className="text-2xl font-semibold">Marketplace</h1>
+      <p className="text-gray-600 mt-2">Your listings will show here.</p>
+    </div>
+  );
+}
+function EntrepreneurDashboard() {
+  return (
+    <div className="mx-auto max-w-6xl px-4 py-10">
+      <h1 className="text-2xl font-semibold">Entrepreneur Dashboard</h1>
+      <p className="text-gray-600 mt-2">Manage your products and orders here.</p>
+    </div>
+  );
+}
+function AdminPanel() {
+  return (
+    <div className="mx-auto max-w-6xl px-4 py-10">
+      <h1 className="text-2xl font-semibold">Admin Panel</h1>
+      <p className="text-gray-600 mt-2">Restricted.</p>
+    </div>
+  );
 }
 
 export default function App() {
   return (
-    <Routes>
-      <Route element={<AppLayout />}>
-        {/* ✅ Public */}
-        <Route path="/" element={<Index />} />
-        <Route path="/get-started" element={<GetStarted />} />
-        <Route path="/login" element={<Login />} />
+    <BrowserRouter>
+      <AuthProvider>
+        <Navbar />
 
-        <Route path="/signup/customer" element={<SignupCustomer />} />
-        <Route path="/signup/entrepreneur" element={<SignupEntrepreneur />} />
+        <Routes>
+          <Route path="/" element={<Home />} />
 
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
 
-        {/* ✅ Marketplace is PUBLIC */}
-        <Route path="/marketplace" element={<Marketplace />} />
+          {/* secret admin route */}
+          <Route path="/admin-login" element={<AdminLogin />} />
 
-        {/* Redirect helper */}
-        <Route path="/account" element={<AccountRedirect />} />
+          {/* protected routes */}
+          <Route
+            path="/marketplace"
+            element={
+              <ProtectedRoute>
+                <Marketplace />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/entrepreneur"
+            element={
+              <ProtectedRoute allow={["entrepreneur"]}>
+                <EntrepreneurDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute allow={["admin"]}>
+                <AdminPanel />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <Settings />
+              </ProtectedRoute>
+            }
+          />
 
-        {/* ✅ Protected: Chat */}
-        <Route element={<RequireAuth />}>
-          <Route path="/chat" element={<ChatPage />} />
-        </Route>
-
-        {/* ✅ Protected: Entrepreneur Dashboard */}
-        <Route element={<RequireAuth allow={["entrepreneur"]} />}>
-          <Route path="/dashboard/entrepreneur" element={<EntrepreneurDashboard />}>
-            <Route index element={<DashboardHome />} />
-            <Route path="add" element={<AddProduct />} />
-            <Route path="products" element={<MyProducts />} />
-            <Route path="products/:id/edit" element={<EditProduct />} />
-            <Route path="product/:id" element={<ProductDetail />} />
-          </Route>
-        </Route>
-
-        {/* ✅ Protected: Admin */}
-        <Route element={<RequireAuth allow={["admin"]} />}>
-          <Route path="/admin" element={<AdminPanel />} />
-        </Route>
-
-        {/* Fallback */}
-        <Route path="*" element={<NotFound />} />
-      </Route>
-    </Routes>
+          <Route path="*" element={<Home />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
