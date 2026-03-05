@@ -36,8 +36,6 @@ export default function Navbar() {
   // secret admin entry: click Login 3 times quickly
   const clickCountRef = useRef(0);
   const timerRef = useRef<number | null>(null);
-  sessionStorage.setItem("cp_admin_intent", "1");
-nav("/admin-login");
 
   // close dropdown when clicking outside
   const menuRef = useRef<HTMLDivElement | null>(null);
