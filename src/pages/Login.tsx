@@ -3,12 +3,10 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "@/contexts/AuthContext";
+import { loginDbUser, setSession } from "@/lib/authStorage";
 
 export default function Login() {
-  const { login } = useAuth();
   const nav = useNavigate();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -20,10 +18,11 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const u = await login(email, password);
+      const user = loginDbUser(email, password);
+      setSession(user);
 
-      if (u.role === "admin") nav("/admin");
-      else if (u.role === "entrepreneur") nav("/dashboard/entrepreneur");
+      if (user.role === "admin") nav("/admin");
+      else if (user.role === "entrepreneur") nav("/dashboard/entrepreneur");
       else nav("/marketplace");
     } catch (err: any) {
       setError(err?.message || "Login failed");
@@ -35,14 +34,24 @@ export default function Login() {
   return (
     <div className="mx-auto max-w-md px-4 py-10">
       <h1 className="text-2xl font-semibold">Login</h1>
-      <p className="text-sm text-gray-600 mt-1">Welcome back. Enter your details to continue.</p>
+      <p className="text-sm text-gray-600 mt-1">
+        Enter your email and password to continue.
+      </p>
 
       <form onSubmit={onSubmit} className="mt-6 space-y-4">
-        {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+        {error && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
 
         <div className="space-y-2">
           <label className="text-sm font-medium">Email</label>
-          <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" />
+          <Input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@email.com"
+          />
         </div>
 
         <div className="space-y-2">
@@ -50,8 +59,8 @@ export default function Login() {
           <Input
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Your password"
             type="password"
+            placeholder="Your password"
           />
         </div>
 
@@ -60,15 +69,13 @@ export default function Login() {
         </Button>
 
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600">New here?</span>
-          <Link to="/signup" className="text-blue-600 hover:underline">
-            Create account
+          <Link to="/forgot-password" className="text-blue-600 hover:underline">
+            Forgot password?
+          </Link>
+          <Link to="/get-started" className="text-blue-600 hover:underline">
+            Get Started
           </Link>
         </div>
-
-        <p className="text-xs text-gray-500">
-          Tip: Admin login is hidden. Click the Navbar “Login” button 3 times quickly.
-        </p>
       </form>
     </div>
   );
