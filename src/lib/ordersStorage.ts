@@ -1,14 +1,15 @@
 // src/lib/ordersStorage.ts
 import { readAuth } from "@/lib/authStorage";
-import { readProducts } from "@/lib/productsStorage";
+import { getProductById } from "@/utils/productStorage";
 import { clearCart, readCart } from "@/lib/cartStorage";
 
 export type OrderItem = {
   productId: string;
-  title: string;
+  name: string;
   price: number;
   qty: number;
-  ownerId: string;
+  sellerId: string;
+  sellerName: string;
 };
 
 export type Order = {
@@ -21,7 +22,7 @@ export type Order = {
   createdAt: string;
 };
 
-const KEY = "cp_orders";
+const KEY = "campusprenuer_orders";
 
 function uid() {
   const g = globalThis as any;
@@ -41,6 +42,13 @@ export function writeOrders(items: Order[]) {
   localStorage.setItem(KEY, JSON.stringify(items));
 }
 
+function priceToNumber(price: any) {
+  // supports "3500" or "3,500"
+  const cleaned = String(price ?? "0").replace(/[^\d.]/g, "");
+  const n = Number(cleaned || 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
 export function placeOrderFromCart() {
   const { user } = readAuth();
   if (!user) throw new Error("Please login");
@@ -49,17 +57,17 @@ export function placeOrderFromCart() {
   const cart = readCart();
   if (cart.length === 0) throw new Error("Cart is empty");
 
-  const products = readProducts();
-
   const items: OrderItem[] = cart.map((c) => {
-    const p = products.find((x) => x.id === c.productId);
+    const p = getProductById(c.productId);
     if (!p) throw new Error("A product in your cart no longer exists");
+
     return {
       productId: p.id,
-      title: p.title,
-      price: p.price,
-      qty: c.qty,
-      ownerId: p.ownerId,
+      name: p.name,
+      price: priceToNumber(p.price),
+      qty: Math.max(1, Math.floor(Number(c.qty) || 1)),
+      sellerId: p.sellerId,
+      sellerName: p.seller || "Entrepreneur",
     };
   });
 
@@ -75,8 +83,7 @@ export function placeOrderFromCart() {
     createdAt: new Date().toISOString(),
   };
 
-  const all = readOrders();
-  writeOrders([order, ...all]);
+  writeOrders([order, ...readOrders()]);
   clearCart();
   return order;
 }
@@ -85,8 +92,8 @@ export function ordersForCustomer(customerId: string) {
   return readOrders().filter((o) => o.customerId === customerId);
 }
 
-export function ordersForEntrepreneur(ownerId: string) {
-  return readOrders().filter((o) => o.items.some((i) => i.ownerId === ownerId));
+export function ordersForSeller(sellerId: string) {
+  return readOrders().filter((o) => o.items.some((i) => i.sellerId === sellerId));
 }
 
 export function updateOrderStatus(orderId: string, status: Order["status"]) {
@@ -97,10 +104,11 @@ export function updateOrderStatus(orderId: string, status: Order["status"]) {
   const idx = all.findIndex((o) => o.id === orderId);
   if (idx === -1) throw new Error("Order not found");
 
-  // Admin can update any. Entrepreneur can update only if order contains their products.
   const isAdmin = user.role === "admin";
-  const isEnt = user.role === "entrepreneur" && all[idx].items.some((i) => i.ownerId === user.id);
-  if (!isAdmin && !isEnt) throw new Error("Not allowed");
+  const isSeller =
+    user.role === "entrepreneur" && all[idx].items.some((i) => i.sellerId === user.id);
+
+  if (!isAdmin && !isSeller) throw new Error("Not allowed");
 
   all[idx] = { ...all[idx], status };
   writeOrders(all);
