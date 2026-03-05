@@ -1,69 +1,69 @@
+// src/contexts/AuthContext.tsx
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import type { Role, SessionUser } from "@/lib/storage";
+import {
+  ensureAdminSeeded,
+  getSession,
+  loginUser,
+  logoutUser,
+  signupUser,
+} from "@/lib/storage";
 
-export type Role = "entrepreneur" | "customer" | "admin";
-
-export type StoredUser = {
-  id: string;
-  name: string;
-  email?: string;
-  role: Role;
-};
-
-type AuthContextValue = {
-  user: StoredUser | null;
-  loading: boolean;
-  loginLocal: (user: StoredUser) => void;
+type AuthContextType = {
+  user: SessionUser | null;
+  isAuthed: boolean;
+  login: (email: string, password: string) => Promise<SessionUser>;
+  signup: (payload: { name: string; email: string; password: string; role: Role }) => Promise<SessionUser>;
   logout: () => void;
+  refresh: () => void;
 };
 
-const AuthContext = createContext<AuthContextValue | null>(null);
-
-const USER_KEY = "user";
-const TOKEN_KEY = "token";
-
-function safeParseUser(raw: string | null): StoredUser | null {
-  if (!raw) return null;
-  try {
-    const u = JSON.parse(raw);
-    if (!u || typeof u !== "object") return null;
-    if (!u.name || !u.role || !u.id) return null;
-    return u as StoredUser;
-  } catch {
-    return null;
-  }
-}
+const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<StoredUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<SessionUser | null>(null);
 
-  // ✅ load saved auth once
   useEffect(() => {
-    const stored = safeParseUser(localStorage.getItem(USER_KEY));
-    setUser(stored);
-    setLoading(false);
+    ensureAdminSeeded(); // makes sure admin exists
+    setUser(getSession());
   }, []);
 
-  // ✅ call this after signup/login to update UI immediately
-  const loginLocal = (u: StoredUser) => {
-    localStorage.setItem(USER_KEY, JSON.stringify(u));
-    localStorage.setItem(TOKEN_KEY, "local"); // token is optional but keeps old logic happy
+  const refresh = () => setUser(getSession());
+
+  const login = async (email: string, password: string) => {
+    const u = loginUser(email, password);
     setUser(u);
+    return u;
+  };
+
+  const signup = async (payload: { name: string; email: string; password: string; role: Role }) => {
+    const u = signupUser(payload);
+    setUser(u);
+    return u;
   };
 
   const logout = () => {
-    localStorage.removeItem(USER_KEY);
-    localStorage.removeItem(TOKEN_KEY);
+    logoutUser();
     setUser(null);
   };
 
-  const value = useMemo(() => ({ user, loading, loginLocal, logout }), [user, loading]);
+  const value = useMemo(
+    () => ({
+      user,
+      isAuthed: !!user,
+      login,
+      signup,
+      logout,
+      refresh,
+    }),
+    [user]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within <AuthProvider />");
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
   return ctx;
 }
