@@ -1,7 +1,6 @@
-// src/components/dashboard/entrepreneur/Orders.tsx
 import { useMemo, useState } from "react";
 import { readAuth } from "@/lib/authStorage";
-import { ordersForEntrepreneur, updateOrderStatus, type Order } from "@/lib/ordersStorage";
+import { ordersForSeller, updateOrderStatus, type Order } from "@/lib/ordersStorage";
 import { Button } from "@/components/ui/button";
 
 export default function EntrepreneurOrders() {
@@ -11,7 +10,7 @@ export default function EntrepreneurOrders() {
 
   const orders = useMemo(() => {
     if (!user) return [];
-    return ordersForEntrepreneur(user.id);
+    return ordersForSeller(user.id);
   }, [user, refresh]);
 
   const setStatus = (orderId: string, status: Order["status"]) => {
@@ -23,6 +22,8 @@ export default function EntrepreneurOrders() {
       setError(e?.message || "Failed to update");
     }
   };
+
+  if (!user) return null;
 
   return (
     <div className="p-4">
@@ -52,10 +53,10 @@ export default function EntrepreneurOrders() {
 
               <ul className="mt-3 text-sm list-disc pl-5">
                 {o.items
-                  .filter((i) => user && i.ownerId === user.id)
+                  .filter((i) => i.sellerId === user.id)
                   .map((i) => (
                     <li key={i.productId}>
-                      {i.title} × {i.qty}
+                      {i.name} × {i.qty}
                     </li>
                   ))}
               </ul>
