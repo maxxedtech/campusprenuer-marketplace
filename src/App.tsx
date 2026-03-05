@@ -25,7 +25,7 @@ import DashboardHome from "@/components/dashboard/entrepreneur/DashboardHome";
 import AddProduct from "@/components/dashboard/entrepreneur/AddProduct";
 import MyProducts from "@/components/dashboard/entrepreneur/MyProducts";
 import EditProduct from "@/components/dashboard/entrepreneur/EditProduct";
-import ProductDetail from "@/pages/dashboard/entrepreneur/ProductDetail";
+import ProductDetail from "@/components/dashboard/entrepreneur/ProductDetail";
 
 import { ensureAdminSeeded, readAuth } from "@/lib/authStorage";
 
