@@ -1,11 +1,16 @@
-// src/pages/Cart.tsx
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { readProducts } from "@/lib/productsStorage";
-import { cartTotal, readCart, removeFromCart, setQty } from "@/lib/cartStorage";
+import { getProductById } from "@/utils/productStorage";
+import { readCart, removeFromCart, setQty } from "@/lib/cartStorage";
 import { placeOrderFromCart } from "@/lib/ordersStorage";
 import { useNavigate } from "react-router-dom";
+
+function priceToNumber(price: any) {
+  const cleaned = String(price ?? "0").replace(/[^\d.]/g, "");
+  const n = Number(cleaned || 0);
+  return Number.isFinite(n) ? n : 0;
+}
 
 export default function Cart() {
   const nav = useNavigate();
@@ -13,17 +18,20 @@ export default function Cart() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const products = useMemo(() => readProducts(), [refresh]);
   const cart = useMemo(() => readCart(), [refresh]);
 
-  const lines = cart
-    .map((c) => ({
-      item: c,
-      product: products.find((p) => p.id === c.productId) || null,
-    }))
-    .filter((x) => x.product);
+  const lines = useMemo(() => {
+    return cart
+      .map((c) => {
+        const p = getProductById(c.productId);
+        return p ? { item: c, product: p } : null;
+      })
+      .filter(Boolean) as any[];
+  }, [cart]);
 
-  const total = useMemo(() => cartTotal(products), [products, refresh]);
+  const total = useMemo(() => {
+    return lines.reduce((sum, l) => sum + priceToNumber(l.product.price) * l.item.qty, 0);
+  }, [lines]);
 
   const bump = () => setRefresh((x) => x + 1);
 
@@ -31,9 +39,8 @@ export default function Cart() {
     setError("");
     setLoading(true);
     try {
-      const order = placeOrderFromCart();
-      nav(`/orders`, { replace: true });
-      console.log("Order placed:", order);
+      placeOrderFromCart();
+      nav("/orders", { replace: true });
     } catch (e: any) {
       setError(e?.message || "Checkout failed");
     } finally {
@@ -56,12 +63,12 @@ export default function Cart() {
         <p className="mt-6 text-gray-600">Your cart is empty.</p>
       ) : (
         <div className="mt-6 space-y-3">
-          {lines.map(({ item, product }: any) => (
+          {lines.map(({ item, product }) => (
             <div key={item.productId} className="rounded-xl border p-4 flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <div className="font-semibold truncate">{product.title}</div>
-                <div className="text-sm text-gray-600">₦{product.price.toLocaleString()}</div>
-                <div className="text-xs text-gray-500 mt-1">Seller: {product.ownerName}</div>
+                <div className="font-semibold truncate">{product.name}</div>
+                <div className="text-sm text-gray-600">₦{priceToNumber(product.price).toLocaleString()}</div>
+                <div className="text-xs text-gray-500 mt-1">Seller: {product.seller}</div>
               </div>
 
               <div className="flex items-center gap-2">
