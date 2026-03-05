@@ -80,7 +80,6 @@ export default function App() {
 
         {/* ✅ Secret admin login page (only reachable via 3-click login OR direct URL) */}
         <Route path="/admin-login" element={<AdminLogin />} />
-        
 
         <Route path="/signup/customer" element={<SignupCustomer />} />
         <Route path="/signup/entrepreneur" element={<SignupEntrepreneur />} />
@@ -91,40 +90,43 @@ export default function App() {
         {/* Redirect helper */}
         <Route path="/account" element={<AccountRedirect />} />
 
-        {/* Protected */}
-      <Route
-  path="/product/:id"
-  element={
-    <RequireAuth allow={["customer"]}>
-      <ProductView />
-    </RequireAuth>
-  }
-/>
+        {/* Protected Routes */}
+        <Route
+          path="/product/:id"
+          element={
+            <RequireAuth allow={["customer"]}>
+              <ProductView />
+            </RequireAuth>
+          }
+        />
+
         <Route
           path="/marketplace"
           element={
             <RequireAuth>
               <Marketplace />
-              <Route
-  path="/cart"
-  element={
-    <RequireAuth allow={["customer"]}>
-      <Cart />
-    </RequireAuth>
-  }
-/>
-
-<Route
-  path="/orders"
-  element={
-    <RequireAuth allow={["customer"]}>
-      <Orders />
-    </RequireAuth>
-  }
-/>
             </RequireAuth>
           }
         />
+
+        <Route
+          path="/cart"
+          element={
+            <RequireAuth allow={["customer"]}>
+              <Cart />
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/orders"
+          element={
+            <RequireAuth allow={["customer"]}>
+              <Orders />
+            </RequireAuth>
+          }
+        />
+
         <Route
           path="/chat"
           element={
