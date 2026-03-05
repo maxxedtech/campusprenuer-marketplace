@@ -1,23 +1,39 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
+
 import { getProducts, Product } from "@/utils/productStorage";
+import { addToCart } from "@/lib/cartStorage";
+import { readAuth } from "@/lib/authStorage";
 
 const Marketplace = () => {
+  const nav = useNavigate();
+  const { user } = readAuth();
+
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [products, setProducts] = useState<Product[]>([]);
+  const [qtyMap, setQtyMap] = useState<Record<string, number>>({});
 
-  // Load products (and keep it fresh when you open the page)
   useEffect(() => {
     const all = getProducts();
-    const sorted = [...all].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    const sorted = [...all].sort(
+      (a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0)
+    );
     setProducts(sorted);
+
+    const initial: Record<string, number> = {};
+    sorted.forEach((p) => (initial[p.id] = 1));
+    setQtyMap(initial);
   }, []);
 
   const categories = useMemo(() => {
     const set = new Set<string>();
-    products.forEach((p) => set.add((p.category || "Uncategorized").trim() || "Uncategorized"));
+    products.forEach((p) =>
+      set.add((p.category || "Uncategorized").trim() || "Uncategorized")
+    );
     return ["All", ...Array.from(set)];
   }, [products]);
 
@@ -26,17 +42,35 @@ const Marketplace = () => {
 
     return products.filter((p) => {
       const cat = (p.category || "Uncategorized").trim() || "Uncategorized";
-
       if (selectedCategory !== "All" && cat !== selectedCategory) return false;
 
       if (q) {
         const hay = `${p.name} ${p.description} ${cat} ${p.seller}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
-
       return true;
     });
   }, [products, search, selectedCategory]);
+
+  const canAddToCart = user?.role === "customer";
+
+  const setQty = (id: string, value: number) => {
+    const n = Number.isFinite(value) ? value : 1;
+    setQtyMap((m) => ({ ...m, [id]: Math.max(1, Math.floor(n)) }));
+  };
+
+  const onAddToCart = (productId: string) => {
+    if (!canAddToCart) {
+      alert("Only customers can add to cart.");
+      return;
+    }
+    addToCart(productId, qtyMap[productId] ?? 1);
+    nav("/cart");
+  };
+
+  const goToProduct = (id: string) => nav(`/product/${id}`);
+
+  const formatPrice = (price: any) => Number(price || 0).toLocaleString();
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -54,7 +88,6 @@ const Marketplace = () => {
         </div>
       </div>
 
-      {/* Debug + Category */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
         <div className="text-sm text-muted-foreground">
           Total products: <b>{products.length}</b> • Showing: <b>{filtered.length}</b>
@@ -85,7 +118,13 @@ const Marketplace = () => {
       ) : (
         <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {filtered.map((p) => (
-            <div key={p.id} className="bg-white border rounded-xl overflow-hidden">
+            <div
+              key={p.id}
+              className="bg-white border rounded-xl overflow-hidden hover:shadow-sm transition cursor-pointer"
+              onClick={() => goToProduct(p.id)}
+              role="button"
+              tabIndex={0}
+            >
               {p.imageUrl ? (
                 <img
                   src={p.imageUrl}
@@ -103,7 +142,7 @@ const Marketplace = () => {
                 <div className="font-semibold text-lg">{p.name}</div>
 
                 <div className="text-sm text-muted-foreground">
-                  ₦{p.price} {p.category ? `• ${p.category}` : ""}
+                  ₦{formatPrice(p.price)} {p.category ? `• ${p.category}` : ""}
                 </div>
 
                 <div className="text-sm text-muted-foreground line-clamp-2">
@@ -113,6 +152,41 @@ const Marketplace = () => {
                 <div className="text-xs text-muted-foreground">
                   Seller: <b>{p.seller || "Entrepreneur"}</b>
                 </div>
+
+                {/* Cart controls (customer only) */}
+                <div
+                  className="pt-2 flex items-center gap-2"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Qty</span>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={qtyMap[p.id] ?? 1}
+                      onChange={(e) => setQty(p.id, Number(e.target.value))}
+                      className="w-20 h-9"
+                    />
+                  </div>
+
+                  <Button
+                    className="ml-auto h-9"
+                    onClick={() => onAddToCart(p.id)}
+                    disabled={!canAddToCart}
+                    title={!canAddToCart ? "Login as customer to add to cart" : "Add to cart"}
+                  >
+                    Add to cart
+                  </Button>
+                </div>
+
+                {!canAddToCart && (
+                  <div
+                    className="text-xs text-muted-foreground"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    (Login as a customer to add items to cart)
+                  </div>
+                )}
               </div>
             </div>
           ))}
