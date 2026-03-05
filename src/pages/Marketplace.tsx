@@ -1,12 +1,131 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Search, X, MessageCircle, ShieldCheck, MapPin, Package } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-
-import { getProducts, Product } from "@/utils/productStorage";
-import { addToCart } from "@/lib/cartStorage";
 import { readAuth } from "@/lib/authStorage";
+import { addToCart } from "@/lib/cartStorage";
+import { getProducts, Product } from "@/utils/productStorage";
+import { getProductCountBySeller } from "@/utils/productStorage";
+
+// Seller Popup Card Component
+function SellerPopup({ 
+  sellerName, 
+  onClose, 
+  onMessage 
+}: { 
+  sellerName: string; 
+  onClose: () => void;
+  onMessage: () => void;
+}) {
+  // Mock seller data - in real app, fetch from backend
+  const sellerData = {
+    name: sellerName,
+    isVerified: true,
+    course: "Computer Science",
+    hostel: "Hall B",
+    joined: "2024",
+    rating: 4.8,
+    sales: 23,
+    bio: "Campus entrepreneur selling quality products at affordable prices. Fast delivery within campus.",
+    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(sellerName)}&background=random&color=fff&size=128`
+  };
+
+  const productCount = getProductCountBySeller(sellerName);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
+      <div 
+        className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden transform transition-all"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header with gradient */}
+        <div className="h-24 bg-gradient-to-r from-indigo-500 to-purple-600 relative">
+          <button 
+            onClick={onClose}
+            className="absolute top-3 right-3 p-1 rounded-full bg-white/20 hover:bg-white/30 text-white transition"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Avatar */}
+        <div className="px-6 pb-6">
+          <div className="relative -mt-12 mb-4 flex justify-center">
+            <img 
+              src={sellerData.avatar} 
+              alt={sellerData.name}
+              className="w-24 h-24 rounded-full border-4 border-white shadow-lg"
+            />
+            {sellerData.isVerified && (
+              <div className="absolute bottom-0 right-1/3 bg-blue-500 text-white p-1 rounded-full">
+                <ShieldCheck className="w-4 h-4" />
+              </div>
+            )}
+          </div>
+
+          {/* Info */}
+          <div className="text-center space-y-1">
+            <h3 className="text-xl font-bold text-gray-900">{sellerData.name}</h3>
+            <p className="text-sm text-gray-500">{sellerData.course} • {sellerData.hostel}</p>
+            
+            <div className="flex items-center justify-center gap-4 mt-3 text-sm">
+              <div className="flex items-center gap-1 text-amber-500">
+                <span className="font-bold">★ {sellerData.rating}</span>
+                <span className="text-gray-400">({sellerData.sales} sales)</span>
+              </div>
+              <div className="flex items-center gap-1 text-gray-600">
+                <Package className="w-4 h-4" />
+                <span>{productCount} products</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Bio */}
+          <p className="mt-4 text-sm text-gray-600 text-center leading-relaxed">
+            {sellerData.bio}
+          </p>
+
+          {/* Stats */}
+          <div className="mt-4 grid grid-cols-2 gap-3 text-center">
+            <div className="bg-gray-50 rounded-lg p-3">
+              <div className="text-lg font-bold text-indigo-600">98%</div>
+              <div className="text-xs text-gray-500">Response Rate</div>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-3">
+              <div className="text-lg font-bold text-indigo-600">2hrs</div>
+              <div className="text-xs text-gray-500">Avg. Delivery</div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="mt-6 space-y-2">
+            <Button 
+              className="w-full gap-2"
+              onClick={onMessage}
+            >
+              <MessageCircle className="w-4 h-4" />
+              Message Seller
+            </Button>
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={onClose}
+            >
+              View All Products
+            </Button>
+          </div>
+
+          {/* Trust badge */}
+          <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-400">
+            <ShieldCheck className="w-3 h-3" />
+            <span>Verified Campus Entrepreneur</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const Marketplace = () => {
   const nav = useNavigate();
@@ -16,6 +135,9 @@ const Marketplace = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [products, setProducts] = useState<Product[]>([]);
   const [qtyMap, setQtyMap] = useState<Record<string, number>>({});
+  
+  // Seller popup state
+  const [selectedSeller, setSelectedSeller] = useState<string | null>(null);
 
   useEffect(() => {
     const all = getProducts();
@@ -72,8 +194,28 @@ const Marketplace = () => {
 
   const formatPrice = (price: any) => Number(price || 0).toLocaleString();
 
+  const handleMessageSeller = () => {
+    if (!user) {
+      alert("Please login to message seller");
+      nav("/login");
+      return;
+    }
+    // Navigate to chat with this seller
+    nav(`/chat?seller=${encodeURIComponent(selectedSeller || "")}`);
+    setSelectedSeller(null);
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* Seller Popup */}
+      {selectedSeller && (
+        <SellerPopup 
+          sellerName={selectedSeller}
+          onClose={() => setSelectedSeller(null)}
+          onMessage={handleMessageSeller}
+        />
+      )}
+
       <div className="flex flex-col md:flex-row md:items-center gap-3 mb-6">
         <h1 className="text-2xl font-display font-bold">Marketplace</h1>
 
@@ -149,8 +291,19 @@ const Marketplace = () => {
                   {p.description}
                 </div>
 
-                <div className="text-xs text-muted-foreground">
-                  Seller: <b>{p.seller || "Entrepreneur"}</b>
+                {/* Clickable Seller Name */}
+                <div 
+                  className="text-xs text-muted-foreground flex items-center gap-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedSeller(p.seller || "Entrepreneur");
+                  }}
+                >
+                  <span>by</span>
+                  <button className="font-medium text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1">
+                    {p.seller || "Entrepreneur"}
+                    <ShieldCheck className="w-3 h-3 text-blue-500" />
+                  </button>
                 </div>
 
                 {/* Cart controls (customer only) */}
