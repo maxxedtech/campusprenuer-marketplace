@@ -1,6 +1,5 @@
 // src/lib/cartStorage.ts
 import { readAuth } from "@/lib/authStorage";
-import type { Product } from "@/lib/productsStorage";
 
 export type CartItem = {
   productId: string;
@@ -30,7 +29,9 @@ export function writeCart(items: CartItem[]) {
 export function addToCart(productId: string, qty: number) {
   const { user } = readAuth();
   if (!user) throw new Error("Please login");
-  if (qty < 1) qty = 1;
+  if (user.role !== "customer") throw new Error("Only customers can add to cart");
+
+  qty = Math.max(1, Math.floor(Number(qty) || 1));
 
   const cart = readCart();
   const idx = cart.findIndex((i) => i.productId === productId);
@@ -42,7 +43,7 @@ export function addToCart(productId: string, qty: number) {
 }
 
 export function setQty(productId: string, qty: number) {
-  if (qty < 1) qty = 1;
+  qty = Math.max(1, Math.floor(Number(qty) || 1));
   const cart = readCart();
   const idx = cart.findIndex((i) => i.productId === productId);
   if (idx === -1) return;
@@ -60,12 +61,4 @@ export function clearCart() {
 
 export function cartCount() {
   return readCart().reduce((sum, i) => sum + i.qty, 0);
-}
-
-export function cartTotal(products: Product[]) {
-  const cart = readCart();
-  return cart.reduce((sum, i) => {
-    const p = products.find((x) => x.id === i.productId);
-    return sum + (p ? p.price * i.qty : 0);
-  }, 0);
 }
