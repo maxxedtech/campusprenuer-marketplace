@@ -11,6 +11,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { User, Listing } from "@/types";
+import AdminTools from "@/components/admin/AdminTools";
+
+export default function AdminPanel() {
+  return <AdminTools />;
+}
 
 const AdminPanel = () => {
   const [users] = useState<User[]>([]);
