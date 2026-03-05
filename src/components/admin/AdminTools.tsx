@@ -1,14 +1,14 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { readUsers, writeUsers, clearSession } from "@/lib/authStorage";
-import { readProducts, writeProducts } from "@/lib/productsStorage";
-import { readOrders, writeOrders } from "@/lib/ordersStorage";
+import { clearSession, readUsers, writeUsers } from "@/lib/authStorage";
+import { getProducts, saveProducts } from "@/utils/productStorage";
+import { readOrders } from "@/lib/ordersStorage";
 
 export default function AdminTools() {
   const [refresh, setRefresh] = useState(0);
 
   const users = useMemo(() => readUsers(), [refresh]);
-  const products = useMemo(() => readProducts(), [refresh]);
+  const products = useMemo(() => getProducts(), [refresh]);
   const orders = useMemo(() => readOrders(), [refresh]);
 
   const bump = () => setRefresh((x) => x + 1);
@@ -19,24 +19,23 @@ export default function AdminTools() {
   };
 
   const deleteProduct = (id: string) => {
-    writeProducts(products.filter((p) => p.id !== id));
+    saveProducts(products.filter((p) => p.id !== id));
     bump();
   };
 
   const resetAll = () => {
-    // wipe demo data
-    localStorage.removeItem("cp_users");
-    localStorage.removeItem("cp_products");
-    localStorage.removeItem("cp_orders");
+    // wipe users DB + products + orders + carts + session
+    localStorage.removeItem("cp_users"); // authStorage DB
+    localStorage.removeItem("campusprenuer_products");
+    localStorage.removeItem("campusprenuer_orders");
 
-    // also clear any carts (unknown users), so brute-force remove cp_cart_ keys:
     Object.keys(localStorage)
       .filter((k) => k.startsWith("cp_cart_"))
       .forEach((k) => localStorage.removeItem(k));
 
     clearSession();
-    bump();
     alert("Demo data reset done.");
+    bump();
   };
 
   return (
@@ -75,9 +74,9 @@ export default function AdminTools() {
             {products.map((p) => (
               <div key={p.id} className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="font-medium truncate">{p.title}</div>
+                  <div className="font-medium truncate">{p.name}</div>
                   <div className="text-xs text-gray-600 truncate">
-                    ₦{p.price.toLocaleString()} • seller: {p.ownerName}
+                    ₦{String(p.price)} • seller: {p.seller}
                   </div>
                 </div>
                 <Button variant="outline" onClick={() => deleteProduct(p.id)}>
