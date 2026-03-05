@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { addProduct } from "@/utils/productStorage";
-import { getSellerId, getSellerName } from "@/utils/authStorage";
+import { readAuth } from "@/lib/authStorage";
 
 function makeId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -42,13 +42,14 @@ async function fileToResizedDataUrl(file: File, maxSize = 900, quality = 0.75) {
 
 export default function AddProduct() {
   const navigate = useNavigate();
+  const { user } = readAuth();
 
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
 
-  const [imageDataUrl, setImageDataUrl] = useState<string>(""); // base64
+  const [imageDataUrl, setImageDataUrl] = useState<string>("");
   const [imageError, setImageError] = useState("");
 
   const [saving, setSaving] = useState(false);
@@ -86,7 +87,12 @@ export default function AddProduct() {
     setError("");
     setSaving(true);
 
-    // ✅ NEW: check if image exists
+    if (!user || user.role !== "entrepreneur") {
+      setError("Only an entrepreneur can add products. Please login again.");
+      setSaving(false);
+      return;
+    }
+
     if (!imageDataUrl) {
       setImageError("Please upload at least one product image.");
       setSaving(false);
@@ -94,22 +100,15 @@ export default function AddProduct() {
     }
 
     try {
-      const sellerId = getSellerId();
-      if (!sellerId) {
-        setError("You are not logged in. Please login again.");
-        setSaving(false);
-        return;
-      }
-
       addProduct({
         id: makeId(),
         name: name.trim(),
-        price: price.trim(),
+        price: price.trim(), // keep your current type
         imageUrl: imageDataUrl,
         category: category.trim(),
         description: description.trim(),
-        seller: getSellerName(),
-        sellerId,
+        seller: user.name,
+        sellerId: user.id,
         createdAt: Date.now(),
       });
 
@@ -146,7 +145,6 @@ export default function AddProduct() {
           required
         />
 
-        {/* ✅ Image Upload (REQUIRED now) */}
         <div className="space-y-2">
           <div className="text-sm font-medium">Product Photo *</div>
           <Input
