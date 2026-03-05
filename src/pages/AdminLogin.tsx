@@ -16,6 +16,12 @@ export default function AdminLogin() {
     e.preventDefault();
     setError("");
     setLoading(true);
+    const intent = sessionStorage.getItem("cp_admin_intent");
+if (!intent) {
+  // block direct access
+  window.location.href = "/login";
+}
+sessionStorage.removeItem("cp_admin_intent");
 
     try {
       const user = loginDbUser(email, password);
