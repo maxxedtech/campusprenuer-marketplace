@@ -7,26 +7,34 @@ import {
   getProductsBySeller,
   Product,
 } from "@/utils/productStorage";
-import { getSellerId } from "@/utils/authStorage";
+import { readAuth } from "@/lib/authStorage";
 
 export default function MyProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [error, setError] = useState("");
-  const navigate = useNavigate(); // ✅ Added navigate
+  const navigate = useNavigate();
 
   const load = () => {
-    const sellerId = getSellerId();
-    if (!sellerId) {
+    const { user, token } = readAuth();
+
+    if (!token || !user) {
       setError("You are not logged in.");
       setProducts([]);
       return;
     }
 
-    setError("");
-    const sellerProducts = getProductsBySeller(sellerId);
+    if (user.role !== "entrepreneur") {
+      setError("Only entrepreneurs can view this page.");
+      setProducts([]);
+      return;
+    }
 
-    // newest first
-    sellerProducts.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    setError("");
+
+    const sellerProducts = getProductsBySeller(user.id).sort(
+      (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
+    );
+
     setProducts(sellerProducts);
   };
 
@@ -35,85 +43,100 @@ export default function MyProducts() {
   }, []);
 
   const handleDelete = (id: string) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this product?"
+    );
+    if (!confirmed) return;
+
     deleteProduct(id);
     load();
   };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">My Products</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-xl md:text-2xl font-semibold">My Products</h1>
 
         <Link to="/dashboard/entrepreneur/add">
-          <Button>Add Product</Button>
+          <Button className="w-full sm:w-auto">Add Product</Button>
         </Link>
       </div>
 
       {error && (
-        <div className="bg-white border rounded-xl p-6 text-sm text-red-600">
+        <div className="rounded-xl border bg-white p-6 text-sm text-red-600">
           {error}
         </div>
       )}
 
-      {products.length === 0 ? (
-        <div className="bg-white border rounded-xl p-6 text-sm text-muted-foreground">
+      {!error && products.length === 0 ? (
+        <div className="rounded-xl border bg-white p-6 text-sm text-muted-foreground">
           No products yet. Click <b>Add Product</b> to create your first listing.
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {products.map((p) => (
-            <Card key={p.id}>
-              <CardContent className="p-4 space-y-3">
-                {/* ✅ Photo preview */}
-                {p.imageUrl && (
-                  <img
-                    src={p.imageUrl}
-                    alt={p.name}
-                    className="w-full h-44 object-cover rounded-lg border"
-                    loading="lazy"
-                  />
-                )}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {products.map((p) => {
+            const displayImage = p.images?.[0] || p.imageUrl || "";
 
-                {/* ✅ View / Chat button */}
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() =>
-                    navigate(`/dashboard/entrepreneur/product/${p.id}`)
-                  }
-                >
-                  View / Chat
-                </Button>
-
-                {/* Product info */}
-                <div className="space-y-1">
-                  <div className="font-semibold text-lg">{p.name}</div>
-                  <div className="text-sm text-muted-foreground">
-                    ₦{p.price}
-                    {p.category ? ` • ${p.category}` : ""}
-                  </div>
-                </div>
-
-                <div className="text-sm text-muted-foreground line-clamp-3">
-                  {p.description}
-                </div>
-
-                {/* Edit / Delete buttons */}
-                <div className="flex gap-2">
-                  <Link to={`/dashboard/entrepreneur/products/${p.id}/edit`}>
-                    <Button variant="outline">Edit</Button>
-                  </Link>
+            return (
+              <Card key={p.id}>
+                <CardContent className="space-y-3 p-4">
+                  {displayImage ? (
+                    <img
+                      src={displayImage}
+                      alt={p.name}
+                      className="h-44 w-full rounded-lg border object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="flex h-44 w-full items-center justify-center rounded-lg border bg-gray-100 text-sm text-muted-foreground">
+                      No photo
+                    </div>
+                  )}
 
                   <Button
-                    variant="destructive"
-                    onClick={() => handleDelete(p.id)}
+                    variant="outline"
+                    className="w-full"
+                    onClick={() =>
+                      navigate(`/dashboard/entrepreneur/product/${p.id}`)
+                    }
                   >
-                    Delete
+                    View / Chat
                   </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+
+                  <div className="space-y-1">
+                    <div className="text-lg font-semibold">{p.name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      ₦{Number(p.price || 0).toLocaleString()}
+                      {p.category ? ` • ${p.category}` : ""}
+                    </div>
+                  </div>
+
+                  <div className="line-clamp-3 text-sm text-muted-foreground">
+                    {p.description}
+                  </div>
+
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Link
+                      to={`/dashboard/entrepreneur/products/${p.id}/edit`}
+                      className="w-full"
+                    >
+                      <Button variant="outline" className="w-full">
+                        Edit
+                      </Button>
+                    </Link>
+
+                    <Button
+                      variant="destructive"
+                      className="w-full"
+                      onClick={() => handleDelete(p.id)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
