@@ -1,4 +1,3 @@
-// src/App.tsx
 import { Navigate, Route, Routes } from "react-router-dom";
 import React, { useEffect } from "react";
 
@@ -24,7 +23,6 @@ import NotFound from "@/pages/NotFound";
 import AdminLogin from "@/pages/AdminLogin";
 import Settings from "@/pages/Settings";
 
-// ✅ Dashboard components
 import EntrepreneurDashboard from "@/components/dashboard/EntrepreneurDashboard";
 import DashboardHome from "@/components/dashboard/entrepreneur/DashboardHome";
 import AddProduct from "@/components/dashboard/entrepreneur/AddProduct";
@@ -59,8 +57,9 @@ function AccountRedirect() {
   const role = (user?.role ?? "unknown") as Role;
 
   if (!isLoggedIn) return <Navigate to="/login" replace />;
-  if (role === "entrepreneur")
+  if (role === "entrepreneur") {
     return <Navigate to="/dashboard/entrepreneur" replace />;
+  }
   if (role === "admin") return <Navigate to="/admin" replace />;
   return <Navigate to="/marketplace" replace />;
 }
@@ -73,28 +72,20 @@ export default function App() {
   return (
     <Routes>
       <Route element={<AppLayout />}>
-        {/* Public */}
         <Route path="/" element={<Index />} />
         <Route path="/get-started" element={<GetStarted />} />
         <Route path="/login" element={<Login />} />
-
-        {/* ✅ Secret admin login page (only reachable via 3-click login OR direct URL) */}
         <Route path="/admin-login" element={<AdminLogin />} />
-
         <Route path="/signup/customer" element={<SignupCustomer />} />
         <Route path="/signup/entrepreneur" element={<SignupEntrepreneur />} />
-
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-
-        {/* Redirect helper */}
         <Route path="/account" element={<AccountRedirect />} />
 
-        {/* Protected Routes */}
         <Route
           path="/product/:id"
           element={
-            <RequireAuth allow={["customer"]}>
+            <RequireAuth allow={["customer", "entrepreneur"]}>
               <ProductView />
             </RequireAuth>
           }
@@ -103,7 +94,7 @@ export default function App() {
         <Route
           path="/marketplace"
           element={
-            <RequireAuth>
+            <RequireAuth allow={["customer", "entrepreneur", "admin"]}>
               <Marketplace />
             </RequireAuth>
           }
@@ -112,7 +103,7 @@ export default function App() {
         <Route
           path="/cart"
           element={
-            <RequireAuth allow={["customer"]}>
+            <RequireAuth allow={["customer", "entrepreneur"]}>
               <Cart />
             </RequireAuth>
           }
@@ -136,7 +127,6 @@ export default function App() {
           }
         />
 
-        {/* ✅ Settings (delete account lives here) */}
         <Route
           path="/settings"
           element={
@@ -146,7 +136,6 @@ export default function App() {
           }
         />
 
-        {/* ✅ Entrepreneur Dashboard (Nested Routes) */}
         <Route
           path="/dashboard/entrepreneur"
           element={
@@ -160,9 +149,9 @@ export default function App() {
           <Route path="products" element={<MyProducts />} />
           <Route path="products/:id/edit" element={<EditProduct />} />
           <Route path="product/:id" element={<ProductDetail />} />
+          <Route path="orders" element={<EntrepreneurOrders />} />
         </Route>
 
-        {/* Admin */}
         <Route
           path="/admin"
           element={
@@ -172,7 +161,6 @@ export default function App() {
           }
         />
 
-        {/* Fallback */}
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
