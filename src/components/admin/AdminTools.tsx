@@ -4,6 +4,8 @@ import { clearSession, readUsers, writeUsers } from "@/lib/authStorage";
 import { getProducts, saveProducts } from "@/utils/productStorage";
 import { readOrders } from "@/lib/ordersStorage";
 
+const RESET_TOKEN = "CAMPUSPRENUER_RESET_2026";
+
 export default function AdminTools() {
   const [refresh, setRefresh] = useState(0);
 
@@ -14,7 +16,30 @@ export default function AdminTools() {
   const bump = () => setRefresh((x) => x + 1);
 
   const deleteUser = (id: string) => {
+    const target = users.find((u) => u.id === id);
+    if (!target) return;
+
+    if (target.role === "admin") {
+      alert("Admin account cannot be deleted.");
+      return;
+    }
+
     writeUsers(users.filter((u) => u.id !== id));
+    bump();
+  };
+
+  const updateUserBadge = (id: string, badge: "" | "verified" | "special") => {
+    const next = users.map((u) =>
+      u.id === id
+        ? {
+            ...u,
+            badge,
+            verified: badge === "verified" || badge === "special",
+          }
+        : u
+    );
+
+    writeUsers(next);
     bump();
   };
 
@@ -24,8 +49,20 @@ export default function AdminTools() {
   };
 
   const resetAll = () => {
-    // wipe users DB + products + orders + carts + session
-    localStorage.removeItem("cp_users"); // authStorage DB
+    const token = window.prompt(
+      "Enter admin reset token to delete all users, products, orders and carts:"
+    );
+
+    if (!token) return;
+
+    if (token !== RESET_TOKEN) {
+      alert("Invalid token. Reset cancelled.");
+      return;
+    }
+
+    const adminUsers = users.filter((u) => u.role === "admin");
+    writeUsers(adminUsers);
+
     localStorage.removeItem("campusprenuer_products");
     localStorage.removeItem("campusprenuer_orders");
 
@@ -34,7 +71,7 @@ export default function AdminTools() {
       .forEach((k) => localStorage.removeItem(k));
 
     clearSession();
-    alert("Demo data reset done.");
+    alert("System reset completed. Admin account was preserved.");
     bump();
   };
 
@@ -44,25 +81,61 @@ export default function AdminTools() {
 
       <div className="mt-4">
         <Button variant="destructive" onClick={resetAll}>
-          Reset demo data (users, products, orders, carts)
+          Reset demo data
         </Button>
       </div>
 
       <div className="mt-8 grid gap-6 md:grid-cols-2">
         <div className="rounded-xl border p-4">
           <h2 className="font-semibold">Users ({users.length})</h2>
-          <div className="mt-3 space-y-2">
+          <div className="mt-3 space-y-3">
             {users.map((u) => (
-              <div key={u.id} className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="font-medium truncate">{u.name}</div>
-                  <div className="text-xs text-gray-600 truncate">
-                    {u.email} • {u.role}
+              <div key={u.id} className="rounded-lg border p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{u.name}</div>
+                    <div className="text-xs text-gray-600 truncate">
+                      {u.email} • {u.role}
+                    </div>
+                    <div className="mt-1 text-xs text-gray-500">
+                      Badge: {u.badge || "none"}
+                    </div>
                   </div>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => deleteUser(u.id)}
+                    disabled={u.role === "admin"}
+                  >
+                    Delete
+                  </Button>
                 </div>
-                <Button variant="outline" onClick={() => deleteUser(u.id)}>
-                  Delete
-                </Button>
+
+                {u.role !== "admin" && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => updateUserBadge(u.id, "verified")}
+                    >
+                      Give Verified
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => updateUserBadge(u.id, "special")}
+                    >
+                      Give Special
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => updateUserBadge(u.id, "")}
+                    >
+                      Remove Badge
+                    </Button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -90,7 +163,7 @@ export default function AdminTools() {
 
       <div className="mt-6 rounded-xl border p-4">
         <h2 className="font-semibold">Orders ({orders.length})</h2>
-        <p className="text-sm text-gray-600 mt-1">
+        <p className="mt-1 text-sm text-gray-600">
           Orders exist in localStorage only (demo).
         </p>
       </div>
