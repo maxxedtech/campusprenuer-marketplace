@@ -1,253 +1,382 @@
-// src/components/layout/Navbar.tsx
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import {
-  ChevronDown,
-  LayoutDashboard,
-  LogOut,
-  Settings,
-  Shield,
-  ShoppingCart,
+  Search,
+  X,
+  MessageCircle,
+  ShieldCheck,
   Package,
-  ListOrdered,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { clearSession, readAuth } from "@/lib/authStorage";
-import { cartCount } from "@/lib/cartStorage";
+import { useNavigate } from "react-router-dom";
+import { readAuth, readUsers } from "@/lib/authStorage";
+import { addToCart } from "@/lib/cartStorage";
+import {
+  getProducts,
+  getProductCountBySeller,
+  Product,
+} from "@/utils/productStorage";
 
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  return ((parts[0]?.[0] || "U") + (parts[1]?.[0] || "")).toUpperCase();
+function SellerPopup({
+  sellerName,
+  sellerId,
+  onClose,
+  onMessage,
+}: {
+  sellerName: string;
+  sellerId: string;
+  onClose: () => void;
+  onMessage: () => void;
+}) {
+  const users = readUsers();
+  const matchedSeller = users.find((u) => u.id === sellerId);
+
+  const sellerData = {
+    name: sellerName,
+    isVerified:
+      matchedSeller?.verified === true ||
+      matchedSeller?.badge === "verified" ||
+      matchedSeller?.badge === "special",
+    course: matchedSeller?.course || "Campus Seller",
+    hostel: matchedSeller?.address || "Campus",
+    joined: matchedSeller?.createdAt
+      ? new Date(matchedSeller.createdAt).getFullYear().toString()
+      : "2024",
+    rating: 4.8,
+    sales: 23,
+    bio:
+      matchedSeller?.bio ||
+      "Campus entrepreneur selling quality products at affordable prices.",
+    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(
+      sellerName
+    )}&background=random&color=fff&size=128`,
+  };
+
+  const productCount = getProductCountBySeller(sellerId);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="relative h-24 bg-gradient-to-r from-indigo-500 to-purple-600">
+          <button
+            onClick={onClose}
+            className="absolute right-3 top-3 rounded-full bg-white/20 p-1 text-white transition hover:bg-white/30"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="px-6 pb-6">
+          <div className="relative -mt-12 mb-4 flex justify-center">
+            <img
+              src={sellerData.avatar}
+              alt={sellerData.name}
+              className="h-24 w-24 rounded-full border-4 border-white shadow-lg"
+            />
+            {sellerData.isVerified && (
+              <div className="absolute bottom-0 right-1/3 rounded-full bg-blue-500 p-1 text-white">
+                <ShieldCheck className="h-4 w-4" />
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-1 text-center">
+            <h3 className="text-xl font-bold text-gray-900">{sellerData.name}</h3>
+            <p className="text-sm text-gray-500">
+              {sellerData.course} • {sellerData.hostel}
+            </p>
+
+            <div className="mt-3 flex items-center justify-center gap-4 text-sm">
+              <div className="flex items-center gap-1 text-amber-500">
+                <span className="font-bold">★ {sellerData.rating}</span>
+                <span className="text-gray-400">({sellerData.sales} sales)</span>
+              </div>
+              <div className="flex items-center gap-1 text-gray-600">
+                <Package className="h-4 w-4" />
+                <span>{productCount} products</span>
+              </div>
+            </div>
+          </div>
+
+          <p className="mt-4 text-center text-sm leading-relaxed text-gray-600">
+            {sellerData.bio}
+          </p>
+
+          <div className="mt-4 grid grid-cols-2 gap-3 text-center">
+            <div className="rounded-lg bg-gray-50 p-3">
+              <div className="text-lg font-bold text-indigo-600">98%</div>
+              <div className="text-xs text-gray-500">Response Rate</div>
+            </div>
+            <div className="rounded-lg bg-gray-50 p-3">
+              <div className="text-lg font-bold text-indigo-600">2hrs</div>
+              <div className="text-xs text-gray-500">Avg. Delivery</div>
+            </div>
+          </div>
+
+          <div className="mt-6 space-y-2">
+            <Button className="w-full gap-2" onClick={onMessage}>
+              <MessageCircle className="h-4 w-4" />
+              Message Seller
+            </Button>
+            <Button variant="outline" className="w-full" onClick={onClose}>
+              Close
+            </Button>
+          </div>
+
+          <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-400">
+            <ShieldCheck className="h-3 w-3" />
+            <span>
+              {sellerData.isVerified
+                ? "Verified Campus Entrepreneur"
+                : "Campus Entrepreneur"}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
-function isActive(pathname: string, href: string) {
-  if (href === "/") return pathname === "/";
-  return pathname === href || pathname.startsWith(href + "/");
-}
-
-export default function Navbar() {
+const Marketplace = () => {
   const nav = useNavigate();
-  const loc = useLocation();
-  const { user, token } = readAuth();
-  const isLoggedIn = Boolean(token && user);
+  const { user } = readAuth();
 
-  const [open, setOpen] = useState(false);
-
-  // secret admin entry: click Login 3 times quickly
-  const clickCountRef = useRef(0);
-  const timerRef = useRef<number | null>(null);
-
-  // close dropdown when clicking outside
-  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [search, setSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const [products, setProducts] = useState<Product[]>([]);
+  const [qtyMap, setQtyMap] = useState<Record<string, number>>({});
+  const [selectedSeller, setSelectedSeller] = useState<{
+    name: string;
+    id: string;
+  } | null>(null);
 
   useEffect(() => {
-    setOpen(false);
-  }, [loc.pathname]);
+    const all = getProducts();
+    const sorted = [...all].sort(
+      (a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0)
+    );
+    setProducts(sorted);
 
-  useEffect(() => {
-    const onDocClick = (e: MouseEvent) => {
-      if (!menuRef.current) return;
-      if (!menuRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
+    const initial: Record<string, number> = {};
+    sorted.forEach((p) => {
+      initial[p.id] = 1;
+    });
+    setQtyMap(initial);
   }, []);
 
-  const dashboardPath = useMemo(() => {
-    if (!user) return "/";
-    if (user.role === "admin") return "/admin";
-    if (user.role === "entrepreneur") return "/dashboard/entrepreneur";
-    return "/marketplace";
-  }, [user]);
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    products.forEach((p) =>
+      set.add((p.category || "Uncategorized").trim() || "Uncategorized")
+    );
+    return ["All", ...Array.from(set)];
+  }, [products]);
 
-  // Cart badge (customer only)
-  const cartBadge = useMemo(() => {
-    if (!isLoggedIn || !user) return 0;
-    if (user.role !== "customer") return 0;
-    return cartCount();
-  }, [isLoggedIn, user, loc.pathname]); // re-evaluate on navigation
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
 
-  const onLoginClick = () => {
-    clickCountRef.current += 1;
+    return products.filter((p) => {
+      const cat = (p.category || "Uncategorized").trim() || "Uncategorized";
+      if (selectedCategory !== "All" && cat !== selectedCategory) return false;
 
-    if (timerRef.current) window.clearTimeout(timerRef.current);
-    timerRef.current = window.setTimeout(() => {
-      clickCountRef.current = 0;
-    }, 1200);
+      if (q) {
+        const hay = `${p.name} ${p.description} ${cat} ${p.seller}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
 
-    if (clickCountRef.current >= 3) {
-      clickCountRef.current = 0;
+      return true;
+    });
+  }, [products, search, selectedCategory]);
 
-      // ✅ Security: mark intent so /admin-login can block direct access
-      sessionStorage.setItem("cp_admin_intent", "1");
+  const canAddToCart =
+    user?.role === "customer" || user?.role === "entrepreneur";
 
-      nav("/admin-login");
+  const setQty = (id: string, value: number) => {
+    const n = Number.isFinite(value) ? value : 1;
+    setQtyMap((m) => ({ ...m, [id]: Math.max(1, Math.floor(n)) }));
+  };
+
+  const onAddToCart = (productId: string) => {
+    if (!canAddToCart) {
+      alert("Please login to add to cart.");
       return;
     }
 
-    nav("/login");
+    addToCart(productId, qtyMap[productId] ?? 1);
+    nav("/cart");
   };
 
-  const onLogout = () => {
-    clearSession();
-    nav("/");
-  };
+  const goToProduct = (id: string) => nav(`/product/${id}`);
 
-  const navLinkClass = (href: string) =>
-    [
-      "text-sm px-3 py-2 rounded-lg transition",
-      isActive(loc.pathname, href) ? "bg-gray-100 text-black" : "text-gray-700 hover:text-black hover:bg-gray-50",
-    ].join(" ");
+  const formatPrice = (price: any) => Number(price || 0).toLocaleString();
+
+  const handleMessageSeller = () => {
+    if (!user) {
+      alert("Please login to message seller");
+      nav("/login");
+      return;
+    }
+
+    nav(`/chat?seller=${encodeURIComponent(selectedSeller?.name || "")}`);
+    setSelectedSeller(null);
+  };
 
   return (
-    <header className="w-full border-b bg-white sticky top-0 z-40">
-      <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
-        <Link to="/" className="font-semibold text-lg tracking-tight">
-          CampusPrenuer
-        </Link>
+    <div className="container mx-auto px-4 py-6 md:py-8">
+      {selectedSeller && (
+        <SellerPopup
+          sellerName={selectedSeller.name}
+          sellerId={selectedSeller.id}
+          onClose={() => setSelectedSeller(null)}
+          onMessage={handleMessageSeller}
+        />
+      )}
 
-        <nav className="flex items-center gap-2">
-          <Link to="/marketplace" className={navLinkClass("/marketplace")}>
-            Marketplace
-          </Link>
+      <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center">
+        <h1 className="text-xl md:text-2xl font-display font-bold">
+          Marketplace
+        </h1>
 
-          {/* Customer-only cart */}
-          {isLoggedIn && user?.role === "customer" && (
-            <button
-              onClick={() => nav("/cart")}
-              className={[
-                "text-sm px-3 py-2 rounded-lg transition flex items-center gap-2",
-                isActive(loc.pathname, "/cart") ? "bg-gray-100 text-black" : "text-gray-700 hover:text-black hover:bg-gray-50",
-              ].join(" ")}
-              type="button"
-            >
-              <ShoppingCart className="h-4 w-4" />
-              Cart
-              {cartBadge > 0 && (
-                <span className="ml-1 inline-flex items-center justify-center rounded-full border px-2 text-xs">
-                  {cartBadge}
-                </span>
-              )}
-            </button>
-          )}
-
-          {isLoggedIn && user ? (
-            <div className="relative" ref={menuRef}>
-              <button
-                onClick={() => setOpen((v) => !v)}
-                className="flex items-center gap-2 rounded-full border px-2 py-1 hover:bg-gray-50"
-                type="button"
-              >
-                <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold">
-                  {initials(user.name || "User")}
-                </div>
-                <span className="text-sm max-w-[140px] truncate">{user.name}</span>
-                <ChevronDown className="h-4 w-4" />
-              </button>
-
-              {open && (
-                <div className="absolute right-0 mt-2 w-64 rounded-xl border bg-white shadow-sm overflow-hidden z-50">
-                  <div className="px-3 py-2 border-b">
-                    <div className="text-sm font-semibold truncate">{user.name}</div>
-                    <div className="text-xs text-gray-600 truncate">{user.email}</div>
-                  </div>
-
-                  {/* Common */}
-                  <button
-                    onClick={() => nav(dashboardPath)}
-                    className="w-full px-3 py-2 text-sm flex items-center gap-2 hover:bg-gray-50"
-                    type="button"
-                  >
-                    <LayoutDashboard className="h-4 w-4" />
-                    Dashboard
-                  </button>
-
-                  {/* Customer menu */}
-                  {user.role === "customer" && (
-                    <>
-                      <button
-                        onClick={() => nav("/orders")}
-                        className="w-full px-3 py-2 text-sm flex items-center gap-2 hover:bg-gray-50"
-                        type="button"
-                      >
-                        <ListOrdered className="h-4 w-4" />
-                        My Orders
-                      </button>
-                      <button
-                        onClick={() => nav("/cart")}
-                        className="w-full px-3 py-2 text-sm flex items-center gap-2 hover:bg-gray-50"
-                        type="button"
-                      >
-                        <ShoppingCart className="h-4 w-4" />
-                        Cart
-                      </button>
-                    </>
-                  )}
-
-                  {/* Entrepreneur menu */}
-                  {user.role === "entrepreneur" && (
-                    <button
-                      onClick={() => nav("/dashboard/entrepreneur/orders")}
-                      className="w-full px-3 py-2 text-sm flex items-center gap-2 hover:bg-gray-50"
-                      type="button"
-                    >
-                      <Package className="h-4 w-4" />
-                      Orders
-                    </button>
-                  )}
-
-                  {/* Admin menu */}
-                  {user.role === "admin" && (
-                    <button
-                      onClick={() => nav("/admin")}
-                      className="w-full px-3 py-2 text-sm flex items-center gap-2 hover:bg-gray-50"
-                      type="button"
-                    >
-                      <Shield className="h-4 w-4" />
-                      Admin Panel
-                    </button>
-                  )}
-
-                  <button
-                    onClick={() => nav("/settings")}
-                    className="w-full px-3 py-2 text-sm flex items-center gap-2 hover:bg-gray-50"
-                    type="button"
-                  >
-                    <Settings className="h-4 w-4" />
-                    Settings
-                  </button>
-
-                  <div className="border-t">
-                    <button
-                      onClick={onLogout}
-                      className="w-full px-3 py-2 text-sm flex items-center gap-2 hover:bg-gray-50 text-red-600"
-                      type="button"
-                    >
-                      <LogOut className="h-4 w-4" />
-                      Logout
-                    </button>
-                  </div>
-
-                  <div className="px-3 py-2 border-t text-xs text-gray-500">
-                    {user.role === "admin"
-                      ? "Admin session"
-                      : user.role === "entrepreneur"
-                      ? "Entrepreneur account"
-                      : "Customer account"}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <>
-              <Button variant="outline" onClick={onLoginClick}>
-                Login
-              </Button>
-              <Button onClick={() => nav("/get-started")}>Get Started</Button>
-            </>
-          )}
-        </nav>
+        <div className="relative md:ml-auto md:max-w-md flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search products..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10 h-11"
+          />
+        </div>
       </div>
-    </header>
+
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="text-sm text-muted-foreground">
+          Total products: <b>{products.length}</b> • Showing: <b>{filtered.length}</b>
+        </div>
+
+        <div className="sm:ml-auto">
+          <select
+            className="rounded-lg border bg-white px-3 py-2 text-sm"
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+          >
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="rounded-xl border bg-white p-10 text-center">
+          <p className="text-muted-foreground">No products available yet.</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Add products from the entrepreneur dashboard.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {filtered.map((p) => {
+            const displayImage =
+              p.images?.[0] || p.imageUrl || "";
+
+            return (
+              <div
+                key={p.id}
+                className="cursor-pointer overflow-hidden rounded-xl border bg-white transition hover:shadow-sm"
+                onClick={() => goToProduct(p.id)}
+                role="button"
+                tabIndex={0}
+              >
+                {displayImage ? (
+                  <img
+                    src={displayImage}
+                    alt={p.name}
+                    className="h-44 w-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="flex h-44 w-full items-center justify-center bg-gray-100 text-sm text-muted-foreground">
+                    No photo
+                  </div>
+                )}
+
+                <div className="space-y-2 p-4">
+                  <div className="text-base md:text-lg font-semibold">{p.name}</div>
+
+                  <div className="text-sm text-muted-foreground">
+                    ₦{formatPrice(p.price)} {p.category ? `• ${p.category}` : ""}
+                  </div>
+
+                  <div className="line-clamp-2 text-sm text-muted-foreground">
+                    {p.description}
+                  </div>
+
+                  <div
+                    className="flex items-center gap-1 text-xs text-muted-foreground"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedSeller({
+                        name: p.seller || "Entrepreneur",
+                        id: p.sellerId,
+                      });
+                    }}
+                  >
+                    <span>by</span>
+                    <button className="flex items-center gap-1 font-medium text-indigo-600 hover:text-indigo-800 hover:underline">
+                      {p.seller || "Entrepreneur"}
+                      <ShieldCheck className="h-3 w-3 text-blue-500" />
+                    </button>
+                  </div>
+
+                  <div
+                    className="flex items-center gap-2 pt-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Qty</span>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={qtyMap[p.id] ?? 1}
+                        onChange={(e) => setQty(p.id, Number(e.target.value))}
+                        className="h-9 w-20"
+                      />
+                    </div>
+
+                    <Button
+                      className="ml-auto h-9"
+                      onClick={() => onAddToCart(p.id)}
+                      disabled={!canAddToCart}
+                      title={!canAddToCart ? "Login to add to cart" : "Add to cart"}
+                    >
+                      Add to cart
+                    </Button>
+                  </div>
+
+                  {!canAddToCart && (
+                    <div
+                      className="text-xs text-muted-foreground"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      (Login to add items to cart)
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
-}
+};
+
+export default Marketplace;
