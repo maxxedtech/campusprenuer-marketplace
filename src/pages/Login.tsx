@@ -1,4 +1,3 @@
-// src/pages/Login.tsx
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -19,10 +18,16 @@ export default function Login() {
 
     try {
       const user = loginDbUser(email, password);
+
+      if (user.role === "admin") {
+        setError("Admin cannot login from the normal login page.");
+        setLoading(false);
+        return;
+      }
+
       setSession(user);
 
-      if (user.role === "admin") nav("/admin");
-      else if (user.role === "entrepreneur") nav("/dashboard/entrepreneur");
+      if (user.role === "entrepreneur") nav("/dashboard/entrepreneur");
       else nav("/marketplace");
     } catch (err: any) {
       setError(err?.message || "Login failed");
@@ -34,7 +39,7 @@ export default function Login() {
   return (
     <div className="mx-auto max-w-md px-4 py-10">
       <h1 className="text-2xl font-semibold">Login</h1>
-      <p className="text-sm text-gray-600 mt-1">
+      <p className="mt-1 text-sm text-gray-600">
         Enter your email and password to continue.
       </p>
 
@@ -51,6 +56,8 @@ export default function Login() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@email.com"
+            type="email"
+            required
           />
         </div>
 
@@ -61,6 +68,7 @@ export default function Login() {
             onChange={(e) => setPassword(e.target.value)}
             type="password"
             placeholder="Your password"
+            required
           />
         </div>
 
