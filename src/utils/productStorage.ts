@@ -15,6 +15,7 @@ const STORAGE_KEY = "campusprenuer_products";
 export function getProducts(): Product[] {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) return [];
+
   try {
     return JSON.parse(raw) as Product[];
   } catch {
@@ -37,8 +38,12 @@ export function deleteProduct(id: string) {
   saveProducts(products);
 }
 
-export function getProductsBySeller(sellerId: string) {
+export function getProductsBySeller(sellerId: string): Product[] {
   return getProducts().filter((p) => p.sellerId === sellerId);
+}
+
+export function getProductCountBySeller(sellerId: string): number {
+  return getProductsBySeller(sellerId).length;
 }
 
 export function getProductById(id: string): Product | null {
@@ -53,7 +58,6 @@ export function updateProduct(updated: Product) {
 }
 
 /**
- * ✅ Alias to match imports like: getAllProducts()
- * This fixes your Vercel build error.
+ * Alias to match imports like: getAllProducts()
  */
 export const getAllProducts = getProducts;
