@@ -1,15 +1,22 @@
-// src/lib/authStorage.ts
 export type Role = "entrepreneur" | "customer" | "admin" | "unknown";
+export type UserBadge = "" | "verified" | "special";
 
 export type StoredUser = {
   id: string;
   name: string;
   email: string;
   role: Role;
+  phone?: string;
+  address?: string;
+  businessName?: string;
+  badge?: UserBadge;
+  verified?: boolean;
+  bio?: string;
+  createdAt?: string;
 };
 
 export type DbUser = StoredUser & {
-  password: string; // demo only
+  password: string;
   createdAt: string;
 };
 
@@ -17,7 +24,6 @@ const USERS_KEY = "cp_users";
 const TOKEN_KEY = "token";
 const USER_KEY = "user";
 
-/** Seed a default admin in localStorage DB (demo). CHANGE the credentials. */
 export function ensureAdminSeeded() {
   const users = readUsers();
   const hasAdmin = users.some((u) => u.role === "admin");
@@ -27,20 +33,22 @@ export function ensureAdminSeeded() {
     id: cryptoId(),
     name: "System Admin",
     email: "admin@campusprenuer.com",
-    password: "Admin@12345", // 🔴 CHANGE THIS
+    password: "Admin@12345",
     role: "admin",
+    badge: "special",
+    verified: true,
     createdAt: new Date().toISOString(),
   };
 
   writeUsers([admin, ...users]);
 }
 
-/** ---- Session helpers (your app already expects token + user) ---- */
 export function readAuth(): { token: string | null; user: StoredUser | null } {
   const token = localStorage.getItem(TOKEN_KEY);
   const userRaw = localStorage.getItem(USER_KEY);
 
   let user: StoredUser | null = null;
+
   if (userRaw) {
     try {
       user = JSON.parse(userRaw);
@@ -48,11 +56,11 @@ export function readAuth(): { token: string | null; user: StoredUser | null } {
       user = null;
     }
   }
+
   return { token, user };
 }
 
 export function setSession(user: StoredUser) {
-  // demo token
   localStorage.setItem(TOKEN_KEY, "demo-token");
   localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
@@ -62,10 +70,10 @@ export function clearSession() {
   localStorage.removeItem(USER_KEY);
 }
 
-/** ---- Demo user DB helpers (needed for delete-account + login) ---- */
 export function readUsers(): DbUser[] {
   try {
-    return JSON.parse(localStorage.getItem(USERS_KEY) || "[]");
+    const parsed = JSON.parse(localStorage.getItem(USERS_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
@@ -80,6 +88,10 @@ export function signupDbUser(payload: {
   email: string;
   password: string;
   role: Role;
+  phone?: string;
+  address?: string;
+  businessName?: string;
+  bio?: string;
 }): StoredUser {
   const users = readUsers();
   const email = payload.email.toLowerCase().trim();
@@ -98,29 +110,39 @@ export function signupDbUser(payload: {
     email,
     password: payload.password,
     role: payload.role,
+    phone: payload.phone?.trim() || "",
+    address: payload.address?.trim() || "",
+    businessName: payload.businessName?.trim() || "",
+    bio: payload.bio?.trim() || "",
+    badge: "",
+    verified: false,
     createdAt: new Date().toISOString(),
   };
 
   const updated = [newUser, ...users];
   writeUsers(updated);
 
-  return { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role };
+  return sanitizeUser(newUser);
 }
 
 export function loginDbUser(email: string, password: string): StoredUser {
   const users = readUsers();
   const found = users.find((u) => u.email === email.toLowerCase().trim());
+
   if (!found) throw new Error("Invalid email or password");
   if (found.password !== password) throw new Error("Invalid email or password");
 
-  return { id: found.id, name: found.name, email: found.email, role: found.role };
+  return sanitizeUser(found);
 }
 
 export function deleteDbUser(userId: string, password: string) {
   const users = readUsers();
   const idx = users.findIndex((u) => u.id === userId);
-  if (idx === -1) throw new Error("Account not found");
 
+  if (idx === -1) throw new Error("Account not found");
+  if (users[idx].role === "admin") {
+    throw new Error("Admin account cannot be deleted");
+  }
   if (users[idx].password !== password) throw new Error("Incorrect password");
 
   users.splice(idx, 1);
@@ -128,9 +150,30 @@ export function deleteDbUser(userId: string, password: string) {
   clearSession();
 }
 
-/** ---- tiny utils ---- */
+export function getSellerId(): string | null {
+  const { token, user } = readAuth();
+  if (!token || !user) return null;
+  if (user.role !== "entrepreneur") return null;
+  return user.id;
+}
+
+function sanitizeUser(user: DbUser): StoredUser {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    phone: user.phone || "",
+    address: user.address || "",
+    businessName: user.businessName || "",
+    badge: user.badge || "",
+    verified: Boolean(user.verified),
+    bio: user.bio || "",
+    createdAt: user.createdAt,
+  };
+}
+
 function cryptoId() {
-  // works on modern browsers; fallback if needed
   const g = globalThis as any;
   if (g.crypto?.randomUUID) return g.crypto.randomUUID();
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
