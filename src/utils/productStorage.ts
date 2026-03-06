@@ -3,33 +3,55 @@ export type Product = {
   name: string;
   price: string;
   imageUrl?: string;
+  images?: string[];
   category?: string;
   description: string;
   seller: string;
   sellerId: string;
   createdAt: number;
+  updatedAt?: number;
 };
 
 const STORAGE_KEY = "campusprenuer_products";
+
+function normalizeProduct(product: Product): Product {
+  const images =
+    Array.isArray(product.images) && product.images.length > 0
+      ? product.images
+      : product.imageUrl
+      ? [product.imageUrl]
+      : [];
+
+  return {
+    ...product,
+    images,
+    imageUrl: product.imageUrl || images[0] || "",
+  };
+}
 
 export function getProducts(): Product[] {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) return [];
 
   try {
-    return JSON.parse(raw) as Product[];
+    const parsed = JSON.parse(raw) as Product[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(normalizeProduct);
   } catch {
     return [];
   }
 }
 
 export function saveProducts(products: Product[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify(products.map(normalizeProduct))
+  );
 }
 
 export function addProduct(product: Product) {
   const products = getProducts();
-  products.push(product);
+  products.push(normalizeProduct(product));
   saveProducts(products);
 }
 
@@ -53,11 +75,15 @@ export function getProductById(id: string): Product | null {
 
 export function updateProduct(updated: Product) {
   const products = getProducts();
-  const next = products.map((p) => (p.id === updated.id ? updated : p));
+  const next = products.map((p) =>
+    p.id === updated.id
+      ? normalizeProduct({
+          ...updated,
+          updatedAt: Date.now(),
+        })
+      : p
+  );
   saveProducts(next);
 }
 
-/**
- * Alias to match imports like: getAllProducts()
- */
 export const getAllProducts = getProducts;
