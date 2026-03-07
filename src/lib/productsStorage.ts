@@ -42,6 +42,9 @@ export function addProduct(payload: Omit<Product, "id" | "ownerId" | "ownerName"
   return readProducts().filter((p) => p.ownerId === ownerId);
   }
   
+  export function getProductsByOwner(ownerId: string): Product[] {
+  return readProducts().filter((p) => p.ownerId === ownerId);
+  }
   const product: Product = {
     id: uid(),
     ownerId: user.id,
