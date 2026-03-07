@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { readAuth } from "@/lib/authStorage";
 import { addToCart } from "@/lib/cartStorage";
-import { getProducts, Product, getProductsBySeller } from "@/utils/productStorage";
+import { readProducts, Product } from "@/lib/productsStorage";
+
 
 // Seller Popup Card Component
 function SellerPopup({ 
