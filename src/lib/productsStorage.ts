@@ -11,7 +11,7 @@ export type Product = {
   imageUrl?: string;
   createdAt: string;
   active: boolean;
-}; 
+};
 
 const KEY = "cp_products";
 
@@ -38,13 +38,6 @@ export function addProduct(payload: Omit<Product, "id" | "ownerId" | "ownerName"
   if (!user) throw new Error("Not logged in");
   if (user.role !== "entrepreneur") throw new Error("Only entrepreneurs can add products");
 
-  export function getProductsByOwner(ownerId: string): Product[] {
-  return readProducts().filter((p) => p.ownerId === ownerId);
-  }
-  
-  export function getProductsByOwner(ownerId: string): Product[] {
-  return readProducts().filter((p) => p.ownerId === ownerId);
-  }
   const product: Product = {
     id: uid(),
     ownerId: user.id,
@@ -60,6 +53,11 @@ export function addProduct(payload: Omit<Product, "id" | "ownerId" | "ownerName"
   const all = readProducts();
   writeProducts([product, ...all]);
   return product;
+}
+
+// ✅ ADD THIS FUNCTION HERE - outside of addProduct
+export function getProductsByOwner(ownerId: string): Product[] {
+  return readProducts().filter((p) => p.ownerId === ownerId);
 }
 
 export function updateProduct(productId: string, patch: Partial<Product>) {
