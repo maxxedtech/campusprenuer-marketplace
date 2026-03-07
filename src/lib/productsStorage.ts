@@ -38,6 +38,10 @@ export function addProduct(payload: Omit<Product, "id" | "ownerId" | "ownerName"
   if (!user) throw new Error("Not logged in");
   if (user.role !== "entrepreneur") throw new Error("Only entrepreneurs can add products");
 
+  export function getProductsByOwner(ownerId: string): Product[] {
+  return readProducts().filter((p) => p.ownerId === ownerId);
+  }
+  
   const product: Product = {
     id: uid(),
     ownerId: user.id,
