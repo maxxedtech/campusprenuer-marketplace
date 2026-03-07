@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, X, MessageCircle, ShieldCheck, Package, Star, MapPin, Phone, Filter, ChevronRight, ShoppingCart, Heart } from "lucide-react";
+import { Search, X, MessageCircle, ShieldCheck, Package, Star, MapPin, Phone, ChevronRight, ShoppingCart, Heart } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { readAuth } from "@/lib/authStorage";
 import { addToCart } from "@/lib/cartStorage";
-import { readProducts, Product } from "@/lib/productsStorage";
-
+import { readProducts, Product, getProductsByOwner } from "@/lib/productsStorage";
 
 // Seller Popup Card Component
 function SellerPopup({ 
@@ -21,7 +20,7 @@ function SellerPopup({
   onClose: () => void;
   onMessage: () => void;
 }) {
-  const sellerProducts = getProductsBySeller(sellerId);
+  const sellerProducts = getProductsByOwner(sellerId);
 
   const sellerData = {
     name: sellerName,
@@ -149,9 +148,10 @@ const Marketplace = () => {
   const [selectedSeller, setSelectedSeller] = useState<{name: string, id: string} | null>(null);
 
   useEffect(() => {
-    const all = getProducts();
+    const all = readProducts();
+    // Sort by newest first
     const sorted = [...all].sort(
-      (a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0)
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
     setProducts(sorted);
 
@@ -160,28 +160,26 @@ const Marketplace = () => {
     setQtyMap(initial);
   }, []);
 
+  // Categories from products (using title keywords since category field doesn't exist)
   const categories = useMemo(() => {
     const set = new Set<string>();
-    products.forEach((p) =>
-      set.add((p.category || "Uncategorized").trim() || "Uncategorized")
-    );
-    return ["All", ...Array.from(set)];
+    set.add("All");
+    // You can add logic here to detect categories from product titles/descriptions
+    // For now, just show "All" since new Product type doesn't have category
+    return Array.from(set);
   }, [products]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
 
     return products.filter((p) => {
-      const cat = (p.category || "Uncategorized").trim() || "Uncategorized";
-      if (selectedCategory !== "All" && cat !== selectedCategory) return false;
-
       if (q) {
-        const hay = `${p.name} ${p.description} ${cat} ${p.seller}`.toLowerCase();
+        const hay = `${p.title} ${p.description} ${p.ownerName}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
-      return true;
+      return p.active !== false; // Only show active products
     });
-  }, [products, search, selectedCategory]);
+  }, [products, search]);
 
   const canAddToCart = user?.role === "customer";
 
@@ -201,7 +199,7 @@ const Marketplace = () => {
 
   const goToProduct = (id: string) => nav(`/product/${id}`);
 
-  const formatPrice = (price: any) => Number(price || 0).toLocaleString();
+  const formatPrice = (price: number) => price.toLocaleString();
 
   const handleMessageSeller = () => {
     if (!user) {
@@ -213,17 +211,9 @@ const Marketplace = () => {
     setSelectedSeller(null);
   };
 
-  // Jumia-style categories with emojis
+  // Simple categories
   const categoryIcons: Record<string, string> = {
-    "All": "🛍️",
-    "Electronics": "📱",
-    "Fashion": "👕",
-    "Food": "🍔",
-    "Services": "💇",
-    "Textbooks": "📚",
-    "Beauty": "💄",
-    "Sports": "⚽",
-    "Uncategorized": "📦"
+    "All": "🛍️"
   };
 
   return (
@@ -290,19 +280,11 @@ const Marketplace = () => {
           <span>Home</span>
           <ChevronRight className="w-4 h-4" />
           <span className="text-orange-600 font-medium">Marketplace</span>
-          {selectedCategory !== "All" && (
-            <>
-              <ChevronRight className="w-4 h-4" />
-              <span className="text-orange-600 font-medium">{selectedCategory}</span>
-            </>
-          )}
         </div>
 
         {/* Results count */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-800">
-            {selectedCategory === "All" ? "All Products" : `${selectedCategory} Products`}
-          </h2>
+          <h2 className="text-lg font-semibold text-gray-800">All Products</h2>
           <span className="text-sm text-gray-500">{filtered.length} results found</span>
         </div>
 
@@ -332,7 +314,7 @@ const Marketplace = () => {
                   {p.imageUrl ? (
                     <img
                       src={p.imageUrl}
-                      alt={p.name}
+                      alt={p.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition"
                       loading="lazy"
                     />
@@ -349,13 +331,6 @@ const Marketplace = () => {
                   >
                     <Heart className="w-4 h-4 text-gray-600" />
                   </button>
-
-                  {/* Category badge */}
-                  {p.category && (
-                    <Badge className="absolute bottom-2 left-2 bg-orange-600 hover:bg-orange-700">
-                      {p.category}
-                    </Badge>
-                  )}
                 </div>
 
                 {/* Content */}
@@ -365,12 +340,12 @@ const Marketplace = () => {
                     ₦{formatPrice(p.price)}
                   </div>
 
-                  {/* Name */}
+                  {/* Title */}
                   <h3 
                     className="text-sm text-gray-700 line-clamp-2 font-medium cursor-pointer hover:text-orange-600"
                     onClick={() => goToProduct(p.id)}
                   >
-                    {p.name}
+                    {p.title}
                   </h3>
 
                   {/* Seller */}
@@ -378,12 +353,12 @@ const Marketplace = () => {
                     className="flex items-center gap-1 text-xs"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setSelectedSeller({name: p.seller, id: p.sellerId});
+                      setSelectedSeller({name: p.ownerName, id: p.ownerId});
                     }}
                   >
                     <span className="text-gray-500">Sold by</span>
                     <button className="text-orange-600 font-medium hover:underline flex items-center gap-0.5">
-                      {p.seller || "Entrepreneur"}
+                      {p.ownerName || "Entrepreneur"}
                       <ShieldCheck className="w-3 h-3 text-blue-500" />
                     </button>
                   </div>
