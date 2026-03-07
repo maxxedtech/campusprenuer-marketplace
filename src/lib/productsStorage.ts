@@ -11,7 +11,7 @@ export type Product = {
   imageUrl?: string;
   createdAt: string;
   active: boolean;
-};
+}; 
 
 const KEY = "cp_products";
 
