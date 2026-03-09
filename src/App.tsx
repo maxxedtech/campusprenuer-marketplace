@@ -14,6 +14,8 @@ import SignupEntrepreneur from "@/pages/SignupEntrepreneur";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/NotFound";
+import CartPage from "@/pages/CartPage";
+import ProductViewPage from "@/pages/ProductViewPage";
 
 import EntrepreneurDashboard from "@/components/dashboard/EntrepreneurDashboard";
 import DashboardHome from "@/components/dashboard/entrepreneur/DashboardHome";
@@ -75,6 +77,24 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Marketplace />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/product/:id"
+          element={
+            <ProtectedRoute>
+              <ProductViewPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/cart"
+          element={
+            <ProtectedRoute allow={["customer"]}>
+              <CartPage />
             </ProtectedRoute>
           }
         />
