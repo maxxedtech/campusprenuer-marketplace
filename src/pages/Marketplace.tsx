@@ -1,420 +1,139 @@
-import { useEffect, useMemo, useState } from "react";
-import { Search, X, MessageCircle, ShieldCheck, Package } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
-import { readAuth } from "@/lib/authStorage";
-import { addToCart } from "@/lib/cartStorage";
-import { getProducts, Product, getProductCountBySeller } from "@/utils/productStorage";
+import { Navigate, Route, Routes } from "react-router-dom";
 
-// Seller Popup Card Component
-function SellerPopup({
-  sellerName,
-  onClose,
-  onMessage
-}: {
-  sellerName: string;
-  onClose: () => void;
-  onMessage: () => void;
-}) {
+import AppLayout from "@/components/layout/AppLayout";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
-  const sellerData = {
-    name: sellerName,
-    isVerified: true,
-    course: "Computer Science",
-    hostel: "Hall B",
-    joined: "2024",
-    rating: 4.8,
-    sales: 23,
-    bio: "Campus entrepreneur selling quality products at affordable prices. Fast delivery within campus.",
-    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(sellerName)}&background=random&color=fff&size=128`
-  };
+import Index from "@/pages/Index";
+import GetStarted from "@/pages/GetStarted";
+import Login from "@/pages/Login";
+import Marketplace from "@/pages/Marketplace";
+import AdminPanel from "@/pages/AdminPanel";
+import ChatPage from "@/pages/ChatPage";
+import SignupCustomer from "@/pages/SignupCustomer";
+import SignupEntrepreneur from "@/pages/SignupEntrepreneur";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
+import NotFound from "@/pages/NotFound";
+import CartPage from "@/pages/CartPage";
+import ProductViewPage from "@/pages/ProductViewPage";
 
-  const productCount = getProductCountBySeller(sellerName);
+import EntrepreneurDashboard from "@/components/dashboard/EntrepreneurDashboard";
+import DashboardHome from "@/components/dashboard/entrepreneur/DashboardHome";
+import AddProduct from "@/components/dashboard/entrepreneur/AddProduct";
+import MyProducts from "@/components/dashboard/entrepreneur/MyProducts";
+import EditProduct from "@/components/dashboard/entrepreneur/EditProduct";
+import ProductDetail from "@/components/dashboard/entrepreneur/ProductDetail";
 
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="h-24 bg-gradient-to-r from-indigo-500 to-purple-600 relative">
-          <button
-            onClick={onClose}
-            className="absolute top-3 right-3 p-1 rounded-full bg-white/20 hover:bg-white/30 text-white"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+type Role = "entrepreneur" | "customer" | "admin" | "unknown";
+type StoredUser = { role?: Role } | null;
 
-        <div className="px-6 pb-6">
-          <div className="relative -mt-12 mb-4 flex justify-center">
-            <img
-              src={sellerData.avatar}
-              alt={sellerData.name}
-              className="w-24 h-24 rounded-full border-4 border-white shadow-lg"
-            />
+function readAuth() {
+  const token = localStorage.getItem("token");
+  const userRaw = localStorage.getItem("user");
 
-            {sellerData.isVerified && (
-              <div className="absolute bottom-0 right-1/3 bg-blue-500 text-white p-1 rounded-full">
-                <ShieldCheck className="w-4 h-4" />
-              </div>
-            )}
-          </div>
+  let user: StoredUser = null;
+  if (userRaw) {
+    try {
+      user = JSON.parse(userRaw);
+    } catch {
+      user = null;
+    }
+  }
 
-          <div className="text-center space-y-1">
-            <h3 className="text-xl font-bold text-gray-900">
-              {sellerData.name}
-            </h3>
-
-            <p className="text-sm text-gray-500">
-              {sellerData.course} • {sellerData.hostel}
-            </p>
-
-            <div className="flex items-center justify-center gap-4 mt-3 text-sm">
-              <div className="flex items-center gap-1 text-amber-500">
-                <span className="font-bold">★ {sellerData.rating}</span>
-                <span className="text-gray-400">
-                  ({sellerData.sales} sales)
-                </span>
-              </div>
-
-              <div className="flex items-center gap-1 text-gray-600">
-                <Package className="w-4 h-4" />
-                <span>{productCount} products</span>
-              </div>
-            </div>
-          </div>
-
-          <p className="mt-4 text-sm text-gray-600 text-center leading-relaxed">
-            {sellerData.bio}
-          </p>
-
-          <div className="mt-4 grid grid-cols-2 gap-3 text-center">
-            <div className="bg-gray-50 rounded-lg p-3">
-              <div className="text-lg font-bold text-indigo-600">98%</div>
-              <div className="text-xs text-gray-500">Response Rate</div>
-            </div>
-
-            <div className="bg-gray-50 rounded-lg p-3">
-              <div className="text-lg font-bold text-indigo-600">2hrs</div>
-              <div className="text-xs text-gray-500">Avg. Delivery</div>
-            </div>
-          </div>
-
-          <div className="mt-6 space-y-2">
-            <Button className="w-full gap-2" onClick={onMessage}>
-              <MessageCircle className="w-4 h-4" />
-              Message Seller
-            </Button>
-
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={onClose}
-            >
-              View All Products
-            </Button>
-          </div>
-
-          <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-400">
-            <ShieldCheck className="w-3 h-3" />
-            <span>Verified Campus Entrepreneur</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  return { token, user };
 }
 
-const Marketplace = () => {
+function AccountRedirect() {
+  const { token, user } = readAuth();
+  const isLoggedIn = Boolean(token && user);
+  const role = (user?.role ?? "unknown") as Role;
 
-  const nav = useNavigate();
-  const { user } = readAuth();
+  if (!isLoggedIn) return <Navigate to="/login" replace />;
+  if (role === "entrepreneur") {
+    return <Navigate to="/dashboard/entrepreneur" replace />;
+  }
+  if (role === "admin") {
+    return <Navigate to="/admin" replace />;
+  }
+  return <Navigate to="/marketplace" replace />;
+}
 
-  const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [products, setProducts] = useState<Product[]>([]);
-  const [qtyMap, setQtyMap] = useState<Record<string, number>>({});
-  const [selectedSeller, setSelectedSeller] = useState<string | null>(null);
-
-  useEffect(() => {
-
-    const all = getProducts();
-
-    const sorted = [...all].sort(
-      (a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0)
-    );
-
-    setProducts(sorted);
-
-    const initial: Record<string, number> = {};
-
-    sorted.forEach((p) => {
-      initial[p.id] = 1;
-    });
-
-    setQtyMap(initial);
-
-  }, []);
-
-  const categories = useMemo(() => {
-
-    const set = new Set<string>();
-
-    products.forEach((p) =>
-      set.add((p.category || "Uncategorized").trim() || "Uncategorized")
-    );
-
-    return ["All", ...Array.from(set)];
-
-  }, [products]);
-
-  const filtered = useMemo(() => {
-
-    const q = search.trim().toLowerCase();
-
-    return products.filter((p) => {
-
-      const cat = (p.category || "Uncategorized").trim() || "Uncategorized";
-
-      if (selectedCategory !== "All" && cat !== selectedCategory) return false;
-
-      if (q) {
-
-        const hay = `${p.name} ${p.description} ${cat} ${p.seller}`.toLowerCase();
-
-        if (!hay.includes(q)) return false;
-
-      }
-
-      return true;
-
-    });
-
-  }, [products, search, selectedCategory]);
-
-  const canAddToCart = user?.role === "customer";
-
-  const setQty = (id: string, value: number) => {
-
-    const n = Number.isFinite(value) ? value : 1;
-
-    setQtyMap((m) => ({
-      ...m,
-      [id]: Math.max(1, Math.floor(n))
-    }));
-
-  };
-
-  const onAddToCart = (productId: string) => {
-
-    if (!canAddToCart) {
-
-      alert("Only customers can add to cart.");
-      return;
-
-    }
-
-    addToCart(productId, qtyMap[productId] ?? 1);
-
-    nav("/cart");
-
-  };
-
-  const goToProduct = (id: string) => nav(`/product/${id}`);
-
-  const formatPrice = (price: any) =>
-    Number(price || 0).toLocaleString();
-
-  const handleMessageSeller = () => {
-
-    if (!user) {
-
-      alert("Please login to message seller");
-      nav("/login");
-      return;
-
-    }
-
-    nav(`/chat?seller=${encodeURIComponent(selectedSeller || "")}`);
-
-    setSelectedSeller(null);
-
-  };
-
+export default function App() {
   return (
-    <div className="container mx-auto px-4 py-8">
+    <Routes>
+      <Route element={<AppLayout />}>
+        <Route path="/" element={<Index />} />
+        <Route path="/get-started" element={<GetStarted />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup/customer" element={<SignupCustomer />} />
+        <Route path="/signup/entrepreneur" element={<SignupEntrepreneur />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
-      {selectedSeller && (
-        <SellerPopup
-          sellerName={selectedSeller}
-          onClose={() => setSelectedSeller(null)}
-          onMessage={handleMessageSeller}
+        <Route path="/account" element={<AccountRedirect />} />
+
+        <Route
+          path="/marketplace"
+          element={
+            <ProtectedRoute>
+              <Marketplace />
+            </ProtectedRoute>
+          }
         />
-      )}
 
-      <div className="flex flex-col md:flex-row md:items-center gap-3 mb-6">
+        <Route
+          path="/product/:id"
+          element={
+            <ProtectedRoute>
+              <ProductViewPage />
+            </ProtectedRoute>
+          }
+        />
 
-        <h1 className="text-2xl font-display font-bold">
-          Marketplace
-        </h1>
+        <Route
+          path="/cart"
+          element={
+            <ProtectedRoute allow={["customer"]}>
+              <CartPage />
+            </ProtectedRoute>
+          }
+        />
 
-        <div className="flex-1 md:max-w-md md:ml-auto relative">
+        <Route
+          path="/chat"
+          element={
+            <ProtectedRoute>
+              <ChatPage />
+            </ProtectedRoute>
+          }
+        />
 
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Route
+          path="/dashboard/entrepreneur"
+          element={
+            <ProtectedRoute allow={["entrepreneur"]}>
+              <EntrepreneurDashboard />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<DashboardHome />} />
+          <Route path="add" element={<AddProduct />} />
+          <Route path="products" element={<MyProducts />} />
+          <Route path="products/:id/edit" element={<EditProduct />} />
+          <Route path="product/:id" element={<ProductDetail />} />
+        </Route>
 
-          <Input
-            placeholder="Search products..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute allow={["admin"]}>
+              <AdminPanel />
+            </ProtectedRoute>
+          }
+        />
 
-        </div>
-
-      </div>
-
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
-
-        <div className="text-sm text-muted-foreground">
-          Total products: <b>{products.length}</b> • Showing: <b>{filtered.length}</b>
-        </div>
-
-        <div className="sm:ml-auto">
-
-          <select
-            className="border rounded-lg px-3 py-2 text-sm bg-white"
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-          >
-
-            {categories.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-
-          </select>
-
-        </div>
-
-      </div>
-
-      {filtered.length === 0 ? (
-
-        <div className="bg-white border rounded-xl p-10 text-center">
-          <p className="text-muted-foreground">
-            No products available yet.
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Add products from the entrepreneur dashboard.
-          </p>
-        </div>
-
-      ) : (
-
-        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-
-          {filtered.map((p) => (
-
-            <div
-              key={p.id}
-              className="bg-white border rounded-xl overflow-hidden hover:shadow-sm transition cursor-pointer"
-              onClick={() => goToProduct(p.id)}
-            >
-
-              {p.imageUrl ? (
-                <img
-                  src={p.imageUrl}
-                  alt={p.name}
-                  className="w-full h-44 object-cover"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="w-full h-44 bg-gray-100 flex items-center justify-center text-sm text-muted-foreground">
-                  No photo
-                </div>
-              )}
-
-              <div className="p-4 space-y-2">
-
-                <div className="font-semibold text-lg">
-                  {p.name}
-                </div>
-
-                <div className="text-sm text-muted-foreground">
-                  ₦{formatPrice(p.price)}
-                </div>
-
-                <div className="text-sm text-muted-foreground line-clamp-2">
-                  {p.description}
-                </div>
-
-                <div
-                  className="text-xs text-muted-foreground flex items-center gap-1"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedSeller(p.seller || "Entrepreneur");
-                  }}
-                >
-                  <span>by</span>
-
-                  <button className="font-medium text-indigo-600 hover:underline flex items-center gap-1">
-                    {p.seller || "Entrepreneur"}
-                    <ShieldCheck className="w-3 h-3 text-blue-500" />
-                  </button>
-
-                </div>
-
-                <div
-                  className="pt-2 flex items-center gap-2"
-                  onClick={(e) => e.stopPropagation()}
-                >
-
-                  <div className="flex items-center gap-2">
-
-                    <span className="text-xs text-muted-foreground">
-                      Qty
-                    </span>
-
-                    <Input
-                      type="number"
-                      min={1}
-                      value={qtyMap[p.id] ?? 1}
-                      onChange={(e) =>
-                        setQty(p.id, Number(e.target.value))
-                      }
-                      className="w-20 h-9"
-                    />
-
-                  </div>
-
-                  <Button
-                    className="ml-auto h-9"
-                    onClick={() => onAddToCart(p.id)}
-                    disabled={!canAddToCart}
-                  >
-                    Add to cart
-                  </Button>
-
-                </div>
-
-              </div>
-
-            </div>
-
-          ))}
-
-        </div>
-
-      )}
-
-    </div>
+        <Route path="*" element={<NotFound />} />
+      </Route>
+    </Routes>
   );
-};
-
-export default Marketplace;
+}
