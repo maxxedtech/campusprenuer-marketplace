@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Menu,
@@ -22,6 +22,9 @@ export default function Navbar() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+
+  const loginClickCount = useRef(0);
+  const loginClickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { user, token } = readAuth();
   const isLoggedIn = Boolean(token && user);
@@ -53,6 +56,27 @@ export default function Navbar() {
     setProfileOpen(false);
     setMobileOpen(false);
     alert("Settings page coming soon");
+  };
+
+  const handleLoginClick = () => {
+    loginClickCount.current += 1;
+
+    if (loginClickTimer.current) {
+      clearTimeout(loginClickTimer.current);
+    }
+
+    if (loginClickCount.current === 3) {
+      loginClickCount.current = 0;
+      navigate("/admin-login");
+      return;
+    }
+
+    loginClickTimer.current = setTimeout(() => {
+      if (loginClickCount.current < 3) {
+        navigate("/login");
+      }
+      loginClickCount.current = 0;
+    }, 500);
   };
 
   return (
@@ -110,7 +134,7 @@ export default function Navbar() {
 
           {!isLoggedIn ? (
             <div className="flex items-center gap-2">
-              <Button variant="ghost" onClick={() => navigate("/login")}>
+              <Button variant="ghost" onClick={handleLoginClick}>
                 Login
               </Button>
               <Button onClick={() => navigate("/get-started")}>
@@ -241,7 +265,7 @@ export default function Navbar() {
 
             {!isLoggedIn ? (
               <div className="flex flex-col gap-2 pt-2">
-                <Button variant="ghost" onClick={() => navigate("/login")}>
+                <Button variant="ghost" onClick={handleLoginClick}>
                   Login
                 </Button>
                 <Button onClick={() => navigate("/get-started")}>
