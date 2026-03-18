@@ -7,6 +7,7 @@ import Index from "@/pages/Index";
 import GetStarted from "@/pages/GetStarted";
 import Login from "@/pages/Login";
 import Marketplace from "@/pages/Marketplace";
+import AdminLogin from "@/pages/AdminLogin";
 import AdminPanel from "@/pages/AdminPanel";
 import ChatPage from "@/pages/ChatPage";
 import SignupCustomer from "@/pages/SignupCustomer";
