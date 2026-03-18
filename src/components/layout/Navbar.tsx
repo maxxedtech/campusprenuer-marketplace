@@ -44,17 +44,20 @@ export default function Navbar() {
 
   const isActive = (path: string) => location.pathname === path;
 
+  const closeMenus = () => {
+    setMobileOpen(false);
+    setProfileOpen(false);
+  };
+
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    setProfileOpen(false);
-    setMobileOpen(false);
+    closeMenus();
     navigate("/login");
   };
 
   const handleSettings = () => {
-    setProfileOpen(false);
-    setMobileOpen(false);
+    closeMenus();
     alert("Settings page coming soon");
   };
 
@@ -63,20 +66,26 @@ export default function Navbar() {
 
     if (loginClickTimer.current) {
       clearTimeout(loginClickTimer.current);
+      loginClickTimer.current = null;
     }
 
-    if (loginClickCount.current === 3) {
+    if (loginClickCount.current >= 3) {
       loginClickCount.current = 0;
+      closeMenus();
       navigate("/admin-login");
       return;
     }
 
     loginClickTimer.current = setTimeout(() => {
-      if (loginClickCount.current < 3) {
+      const clicks = loginClickCount.current;
+      loginClickCount.current = 0;
+      loginClickTimer.current = null;
+
+      if (clicks < 3) {
+        closeMenus();
         navigate("/login");
       }
-      loginClickCount.current = 0;
-    }, 500);
+    }, 700);
   };
 
   return (
@@ -85,10 +94,7 @@ export default function Navbar() {
         <Link
           to="/"
           className="flex items-center gap-2 text-lg font-bold tracking-tight"
-          onClick={() => {
-            setMobileOpen(false);
-            setProfileOpen(false);
-          }}
+          onClick={closeMenus}
         >
           <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold">
             C
@@ -176,7 +182,7 @@ export default function Navbar() {
                     {role === "entrepreneur" && (
                       <button
                         onClick={() => {
-                          setProfileOpen(false);
+                          closeMenus();
                           navigate("/dashboard/entrepreneur");
                         }}
                         className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted"
@@ -189,7 +195,7 @@ export default function Navbar() {
                     {role === "admin" && (
                       <button
                         onClick={() => {
-                          setProfileOpen(false);
+                          closeMenus();
                           navigate("/admin");
                         }}
                         className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted"
@@ -236,7 +242,7 @@ export default function Navbar() {
             <Link
               to="/marketplace"
               className="block rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted"
-              onClick={() => setMobileOpen(false)}
+              onClick={closeMenus}
             >
               Marketplace
             </Link>
@@ -246,7 +252,7 @@ export default function Navbar() {
                 <Link
                   to="/chat"
                   className="block rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted"
-                  onClick={() => setMobileOpen(false)}
+                  onClick={closeMenus}
                 >
                   Chat
                 </Link>
@@ -255,7 +261,7 @@ export default function Navbar() {
                   <Link
                     to="/cart"
                     className="block rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted"
-                    onClick={() => setMobileOpen(false)}
+                    onClick={closeMenus}
                   >
                     Cart
                   </Link>
@@ -287,7 +293,7 @@ export default function Navbar() {
                   {role === "entrepreneur" && (
                     <button
                       onClick={() => {
-                        setMobileOpen(false);
+                        closeMenus();
                         navigate("/dashboard/entrepreneur");
                       }}
                       className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted"
@@ -300,7 +306,7 @@ export default function Navbar() {
                   {role === "admin" && (
                     <button
                       onClick={() => {
-                        setMobileOpen(false);
+                        closeMenus();
                         navigate("/admin");
                       }}
                       className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted"
