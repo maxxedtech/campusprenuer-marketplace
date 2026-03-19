@@ -1,4 +1,3 @@
-Thid is what I want to replace my navbar with
 import { useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -18,18 +17,11 @@ import { readAuth } from "@/lib/authStorage";
 
 type Role = "entrepreneur" | "customer" | "admin" | "unknown";
 
-const campuses = [
-  { id: "um", name: "University of Maiduguri" },
-  { id: "kiu", name: "Kashim Ibrahim University" },
-];
-
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [campusOpen, setCampusOpen] = useState(false);
-  const [selectedCampus, setSelectedCampus] = useState(campuses[0]);
 
   const loginClickCount = useRef(0);
   const loginClickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -55,7 +47,6 @@ export default function Navbar() {
   const closeMenus = () => {
     setMobileOpen(false);
     setProfileOpen(false);
-    setCampusOpen(false);
   };
 
   const handleLogout = () => {
@@ -97,69 +88,36 @@ export default function Navbar() {
     }, 700);
   };
 
-  const selectCampus = (campus: typeof campuses[0]) => {
-    setSelectedCampus(campus);
-    setCampusOpen(false);
-    // TODO: Add marketplace filter logic by campus
-  };
-
   return (
-    <header className="sticky top-0 z-50 border-b bg-white/95 backdrop-blur-md shadow-sm">
+    <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <nav className="container mx-auto flex h-16 items-center justify-between px-4">
-        {/* Logo */}
         <Link
           to="/"
-          className="flex items-center gap-2 text-lg font-bold tracking-tight text-primary"
+          className="flex items-center gap-2 text-lg font-bold tracking-tight"
           onClick={closeMenus}
         >
-          <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-purple-600 text-white font-bold text-lg">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold">
             C
           </span>
           <span>CampusPrenuer</span>
         </Link>
 
-        {/* Desktop Links */}
-        <div className="hidden md:flex items-center gap-4">
-          {/* Marketplace */}
+        <div className="hidden md:flex items-center gap-3">
           <Link
             to="/marketplace"
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-gray-100 ${
-              isActive("/marketplace") ? "bg-gray-100" : ""
+            className={`rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-muted ${
+              isActive("/marketplace") ? "bg-muted" : ""
             }`}
           >
             Marketplace
           </Link>
 
-          {/* Campus Selector */}
-          <div className="relative">
-            <button
-              onClick={() => setCampusOpen((v) => !v)}
-              className="flex items-center gap-1 rounded-lg border px-3 py-2 text-sm hover:bg-gray-100 transition"
-            >
-              {selectedCampus.name} <ChevronDown className="h-4 w-4" />
-            </button>
-            {campusOpen && (
-              <div className="absolute mt-1 w-60 rounded-lg border bg-white shadow-md">
-                {campuses.map((campus) => (
-                  <button
-                    key={campus.id}
-                    className="block w-full px-4 py-2 text-left hover:bg-gray-100"
-                    onClick={() => selectCampus(campus)}
-                  >
-                    {campus.name}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Chat & Cart */}
           {isLoggedIn && (
             <>
               <Link
                 to="/chat"
-                className={`rounded-lg p-2 transition hover:bg-gray-100 ${
-                  isActive("/chat") ? "bg-gray-100" : ""
+                className={`rounded-lg p-2 transition hover:bg-muted ${
+                  isActive("/chat") ? "bg-muted" : ""
                 }`}
                 aria-label="Chat"
               >
@@ -169,8 +127,8 @@ export default function Navbar() {
               {role === "customer" && (
                 <Link
                   to="/cart"
-                  className={`rounded-lg p-2 transition hover:bg-gray-100 ${
-                    isActive("/cart") ? "bg-gray-100" : ""
+                  className={`rounded-lg p-2 transition hover:bg-muted ${
+                    isActive("/cart") ? "bg-muted" : ""
                   }`}
                   aria-label="Cart"
                 >
@@ -180,7 +138,6 @@ export default function Navbar() {
             </>
           )}
 
-          {/* Auth Buttons */}
           {!isLoggedIn ? (
             <div className="flex items-center gap-2">
               <Button variant="ghost" onClick={handleLoginClick}>
@@ -194,33 +151,41 @@ export default function Navbar() {
             <div className="relative">
               <button
                 onClick={() => setProfileOpen((v) => !v)}
-                className="flex items-center gap-3 rounded-xl border px-3 py-2 text-left hover:bg-gray-100 transition"
+                className="flex items-center gap-3 rounded-xl border px-3 py-2 text-left transition hover:bg-muted"
               >
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-200">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
                   <User className="h-4 w-4" />
                 </div>
+
                 <div className="leading-tight">
                   <div className="text-sm font-semibold">{displayName}</div>
-                  <div className="text-xs text-gray-500">{roleLabel}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {roleLabel}
+                  </div>
                 </div>
-                <ChevronDown className="h-4 w-4 text-gray-500" />
+
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
               </button>
 
               {profileOpen && (
-                <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-xl border bg-white shadow-lg">
+                <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-xl border bg-background shadow-lg">
                   <div className="border-b px-4 py-3">
-                    <div className="text-sm font-semibold">{user?.name || "User"}</div>
-                    <div className="text-xs text-gray-500">{roleLabel}</div>
+                    <div className="text-sm font-semibold">
+                      {user?.name || "User"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {roleLabel}
+                    </div>
                   </div>
 
-                  <div className="p-2 space-y-1">
+                  <div className="p-2">
                     {role === "entrepreneur" && (
                       <button
                         onClick={() => {
                           closeMenus();
                           navigate("/dashboard/entrepreneur");
                         }}
-                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-gray-100"
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted"
                       >
                         <LayoutDashboard className="h-4 w-4" />
                         Entrepreneur Dashboard
@@ -233,7 +198,7 @@ export default function Navbar() {
                           closeMenus();
                           navigate("/admin");
                         }}
-                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-gray-100"
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted"
                       >
                         <Shield className="h-4 w-4" />
                         Admin Panel
@@ -242,7 +207,7 @@ export default function Navbar() {
 
                     <button
                       onClick={handleSettings}
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-gray-100"
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted"
                     >
                       <Settings className="h-4 w-4" />
                       Settings
@@ -250,7 +215,7 @@ export default function Navbar() {
 
                     <button
                       onClick={handleLogout}
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-gray-100"
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-muted"
                     >
                       <LogOut className="h-4 w-4" />
                       Logout
@@ -262,7 +227,6 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Mobile Menu Button */}
         <button
           onClick={() => setMobileOpen((v) => !v)}
           className="md:hidden inline-flex items-center justify-center rounded-lg border p-2"
@@ -272,55 +236,31 @@ export default function Navbar() {
         </button>
       </nav>
 
-      {/* Mobile Menu */}
       {mobileOpen && (
         <div className="border-t md:hidden">
           <div className="container mx-auto space-y-2 px-4 py-4">
             <Link
               to="/marketplace"
-              className="block rounded-lg px-3 py-2 text-sm font-medium hover:bg-gray-100"
+              className="block rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted"
               onClick={closeMenus}
             >
               Marketplace
             </Link>
 
-            {/* Campus Selector */}
-            <div className="relative">
-              <button
-                onClick={() => setCampusOpen((v) => !v)}
-                className="flex w-full justify-between rounded-lg border px-3 py-2 text-sm hover:bg-gray-100"
-              >
-                {selectedCampus.name} <ChevronDown className="h-4 w-4" />
-              </button>
-              {campusOpen && (
-                <div className="absolute mt-1 w-full rounded-lg border bg-white shadow-md z-10">
-                  {campuses.map((campus) => (
-                    <button
-                      key={campus.id}
-                      className="block w-full px-4 py-2 text-left hover:bg-gray-100"
-                      onClick={() => selectCampus(campus)}
-                    >
-                      {campus.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Chat & Cart */}
             {isLoggedIn && (
               <>
                 <Link
                   to="/chat"
-                  className="block rounded-lg px-3 py-2 text-sm font-medium hover:bg-gray-100"
+                  className="block rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted"
                   onClick={closeMenus}
                 >
                   Chat
                 </Link>
+
                 {role === "customer" && (
                   <Link
                     to="/cart"
-                    className="block rounded-lg px-3 py-2 text-sm font-medium hover:bg-gray-100"
+                    className="block rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted"
                     onClick={closeMenus}
                   >
                     Cart
@@ -329,7 +269,6 @@ export default function Navbar() {
               </>
             )}
 
-            {/* Auth Buttons */}
             {!isLoggedIn ? (
               <div className="flex flex-col gap-2 pt-2">
                 <Button variant="ghost" onClick={handleLoginClick}>
@@ -342,8 +281,12 @@ export default function Navbar() {
             ) : (
               <div className="rounded-xl border p-3">
                 <div className="mb-3">
-                  <div className="text-sm font-semibold">{user?.name || "User"}</div>
-                  <div className="text-xs text-gray-500">{roleLabel}</div>
+                  <div className="text-sm font-semibold">
+                    {user?.name || "User"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {roleLabel}
+                  </div>
                 </div>
 
                 <div className="space-y-1">
@@ -353,7 +296,7 @@ export default function Navbar() {
                         closeMenus();
                         navigate("/dashboard/entrepreneur");
                       }}
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-gray-100"
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted"
                     >
                       <LayoutDashboard className="h-4 w-4" />
                       Entrepreneur Dashboard
@@ -366,7 +309,7 @@ export default function Navbar() {
                         closeMenus();
                         navigate("/admin");
                       }}
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-gray-100"
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted"
                     >
                       <Shield className="h-4 w-4" />
                       Admin Panel
@@ -375,7 +318,7 @@ export default function Navbar() {
 
                   <button
                     onClick={handleSettings}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-gray-100"
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted"
                   >
                     <Settings className="h-4 w-4" />
                     Settings
@@ -383,7 +326,7 @@ export default function Navbar() {
 
                   <button
                     onClick={handleLogout}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-gray-100"
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-muted"
                   >
                     <LogOut className="h-4 w-4" />
                     Logout
