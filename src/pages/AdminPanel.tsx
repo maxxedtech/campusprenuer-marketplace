@@ -1,54 +1,17 @@
 // =============================
-// FULL ADMIN DASHBOARD WITH CHARTS
+// FILE: AdminLayout.jsx
+// Replace your current dashboard page with this full layout
 // =============================
 
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Users,
-  DollarSign,
-  Activity,
-  ShoppingCart,
-  Home,
-  Settings,
-} from "lucide-react";
-
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-} from "recharts";
-
-// =============================
-// SAMPLE DATA (REPLACE LATER WITH API)
-// =============================
+import { Users, DollarSign, Activity, ShoppingCart, Home, Settings } from "lucide-react";
 
 const stats = [
   { title: "Total Users", value: "1,245", icon: Users },
   { title: "Revenue", value: "$8,430", icon: DollarSign },
   { title: "Active Sessions", value: "312", icon: Activity },
   { title: "Orders", value: "578", icon: ShoppingCart },
-];
-
-const salesData = [
-  { name: "Jan", sales: 400 },
-  { name: "Feb", sales: 700 },
-  { name: "Mar", sales: 500 },
-  { name: "Apr", sales: 900 },
-  { name: "May", sales: 650 },
-];
-
-const userData = [
-  { name: "Mon", users: 30 },
-  { name: "Tue", users: 50 },
-  { name: "Wed", users: 40 },
-  { name: "Thu", users: 70 },
-  { name: "Fri", users: 60 },
 ];
 
 export default function AdminLayout() {
@@ -96,79 +59,68 @@ export default function AdminLayout() {
           })}
         </div>
 
-        {/* ===== CHARTS SECTION ===== */}
+        {/* ===== LOWER SECTION ===== */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* SALES LINE CHART */}
           <Card className="rounded-2xl shadow-md">
             <CardContent className="p-4">
-              <h2 className="text-lg font-semibold mb-4">Sales Overview</h2>
-
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={salesData}>
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="sales" strokeWidth={3} />
-                  </LineChart>
-                </ResponsiveContainer>
+              <h2 className="text-lg font-semibold mb-2">Sales Overview</h2>
+              <div className="h-40 flex items-center justify-center text-gray-400">
+                Chart coming soon...
               </div>
             </CardContent>
           </Card>
 
-          {/* USERS BAR CHART */}
           <Card className="rounded-2xl shadow-md">
             <CardContent className="p-4">
-              <h2 className="text-lg font-semibold mb-4">User Growth</h2>
-
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={userData}>
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="users" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              <h2 className="text-lg font-semibold mb-2">Recent Activity</h2>
+              <ul className="space-y-2 text-sm text-gray-600">
+                <li>• New user registered</li>
+                <li>• Order #1234 placed</li>
+                <li>• Payment received</li>
+                <li>• Server restarted</li>
+              </ul>
             </CardContent>
           </Card>
         </div>
-
-        {/* ===== ACTIVITY ===== */}
-        <Card className="rounded-2xl shadow-md">
-          <CardContent className="p-4">
-            <h2 className="text-lg font-semibold mb-2">Recent Activity</h2>
-            <ul className="space-y-2 text-sm text-gray-600">
-              <li>• New user registered</li>
-              <li>• Order #1234 placed</li>
-              <li>• Payment received</li>
-              <li>• Server restarted</li>
-            </ul>
-          </CardContent>
-        </Card>
       </main>
     </div>
   );
 }
 
+
 // =============================
-// INSTALL THIS (VERY IMPORTANT)
+// WHERE TO USE THIS FILE
 // =============================
 
-// npm install recharts
+// 1. Replace your current dashboard page file with this component
+// Example:
+// If you have: pages/admin/dashboard.jsx → replace EVERYTHING with this
+
+// 2. If you're using React Router:
+// In your App.jsx, add:
+
+/*
+import AdminLayout from "./AdminLayout";
+
+<Route path="/admin" element={<AdminLayout />} />
+*/
+
+
+// =============================
+// IMPORTANT (DON'T SKIP)
+// =============================
+
+// Make sure you have these installed:
 // npm install lucide-react
 
-// =============================
-// WHERE TO REPLACE
-// =============================
-
-// Replace your admin/dashboard file completely with this code
+// If Card component fails:
+// You are using shadcn UI → ensure it's installed properly
 
 // =============================
-// NEXT UPGRADE
+// NEXT STEP (TELL ME WHEN READY)
 // =============================
 
-// - Connect real backend data (API)
-// - Add authentication (protect admin)
-// - Add tables (users/orders control)
+// - Add real charts (very clean graphs)
+// - Connect real backend data
+// - Add login protection (VERY IMPORTANT)
+// - Build users/orders management tables
