@@ -1,78 +1,74 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { loginDbUser, setSession } from "@/lib/authStorage";
+import { Shield } from "lucide-react";
 
 export default function AdminLogin() {
-  const nav = useNavigate();
+  const navigate = useNavigate();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Block direct access on page load
-  useEffect(() => {
-    const intent = sessionStorage.getItem("cp_admin_intent");
-    if (!intent) {
-      window.location.href = "/login";
-    }
-  }, []);
-
-  const onSubmit = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setLoading(true);
 
-    try {
-      const user = loginDbUser(email, password);
-      if (user.role !== "admin") throw new Error("Not an admin account");
+    // 🔐 simple demo auth (you can replace with backend later)
+    if (email === "admin@campus.com" && password === "admin123") {
+      localStorage.setItem("token", "admin-token");
 
-      setSession(user);
-      sessionStorage.removeItem("cp_admin_intent");
-      nav("/admin");
-    } catch (err: any) {
-      setError(err?.message || "Admin login failed");
-    } finally {
-      setLoading(false);
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          name: "Super Admin",
+          role: "admin",
+          email,
+        })
+      );
+
+      navigate("/admin");
+    } else {
+      setError("Invalid admin credentials");
     }
   };
 
   return (
-    <div className="mx-auto max-w-md px-4 py-10">
-      <h1 className="text-2xl font-semibold">Admin Login</h1>
-      <p className="text-sm text-gray-600 mt-1">Restricted access.</p>
+    <div className="min-h-screen flex items-center justify-center px-4 bg-muted/40">
+      <div className="w-full max-w-md bg-background border rounded-2xl p-6 shadow-sm">
+        <div className="flex items-center gap-2 mb-4">
+          <Shield className="text-primary" />
+          <h1 className="text-xl font-bold">Admin Access</h1>
+        </div>
 
-      <form onSubmit={onSubmit} className="mt-6 space-y-4">
+        <p className="text-sm text-muted-foreground mb-6">
+          Restricted area. Authorized personnel only.
+        </p>
+
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            {error}
-          </div>
+          <div className="text-sm text-red-500 mb-4">{error}</div>
         )}
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Admin Email</label>
+        <form onSubmit={handleLogin} className="space-y-4">
           <Input
+            type="email"
+            placeholder="Admin email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="admin@campusprenuer.com"
           />
-        </div>
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Admin Password</label>
           <Input
+            type="password"
+            placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            type="password"
-            placeholder="Admin password"
           />
-        </div>
 
-        <Button className="w-full" disabled={loading}>
-          {loading ? "Signing in..." : "Sign in"}
-        </Button>
-      </form>
+          <Button type="submit" className="w-full">
+            Login
+          </Button>
+        </form>
+      </div>
     </div>
   );
 }
