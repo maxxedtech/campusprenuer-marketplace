@@ -1,90 +1,83 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { loginDbUser, setSession } from "@/lib/authStorage";
+// src/pages/Login.tsx
+import React, { useState } from "react";
+import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
+import { auth, googleProvider, db } from "../firebase";
+import { collection, doc, setDoc, getDocs, query, where } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
 
 export default function Login() {
-  const nav = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-
+  const handleEmailLogin = async () => {
     try {
-      const user = loginDbUser(email, password);
-
-      if (user.role === "admin") {
-        setError("Admin cannot login from the normal login page.");
-        setLoading(false);
-        return;
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      // store user if new
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("email", "==", user.email));
+      const snapshot = await getDocs(q);
+      if (snapshot.empty) {
+        await setDoc(doc(db, "users", user.uid), {
+          email: user.email,
+          name: user.displayName || "User",
+          role: "customer",
+          provider: "email",
+          createdAt: Date.now(),
+        });
       }
+      navigate("/"); // redirect to marketplace or dashboard
+    } catch (err) {
+      alert("Login failed: " + err);
+    }
+  };
 
-      setSession(user);
-
-      if (user.role === "entrepreneur") nav("/dashboard/entrepreneur");
-      else nav("/marketplace");
-    } catch (err: any) {
-      setError(err?.message || "Login failed");
-    } finally {
-      setLoading(false);
+  const handleGoogleLogin = async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      // store user in Firestore
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("email", "==", user.email));
+      const snapshot = await getDocs(q);
+      if (snapshot.empty) {
+        await setDoc(doc(db, "users", user.uid), {
+          email: user.email,
+          name: user.displayName || "User",
+          role: "customer",
+          provider: "google",
+          createdAt: Date.now(),
+        });
+      }
+      navigate("/");
+    } catch (err) {
+      alert("Google login failed: " + err);
     }
   };
 
   return (
-    <div className="mx-auto max-w-md px-4 py-10">
-      <h1 className="text-2xl font-semibold">Login</h1>
-      <p className="mt-1 text-sm text-gray-600">
-        Enter your email and password to continue.
-      </p>
-
-      <form onSubmit={onSubmit} className="mt-6 space-y-4">
-        {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Email</label>
-          <Input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@email.com"
-            type="email"
-            required
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Password</label>
-          <Input
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            type="password"
-            placeholder="Your password"
-            required
-          />
-        </div>
-
-        <Button className="w-full" disabled={loading}>
-          {loading ? "Logging in..." : "Login"}
-        </Button>
-
-        <div className="flex items-center justify-between text-sm">
-          <Link to="/forgot-password" className="text-blue-600 hover:underline">
-            Forgot password?
-          </Link>
-          <Link to="/get-started" className="text-blue-600 hover:underline">
-            Get Started
-          </Link>
-        </div>
-      </form>
+    <div className="flex flex-col items-center justify-center h-screen">
+      <h1 className="text-2xl mb-4">Login</h1>
+      <input
+        placeholder="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        className="border p-2 mb-2 rounded"
+      />
+      <input
+        placeholder="Password"
+        type="password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        className="border p-2 mb-2 rounded"
+      />
+      <button onClick={handleEmailLogin} className="bg-blue-500 text-white px-4 py-2 rounded mb-2">
+        Login
+      </button>
+      <button onClick={handleGoogleLogin} className="bg-red-500 text-white px-4 py-2 rounded">
+        Login with Google
+      </button>
     </div>
   );
 }
