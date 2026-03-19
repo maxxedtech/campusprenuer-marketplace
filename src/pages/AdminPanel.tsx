@@ -1,212 +1,174 @@
 // =============================
-// ADMIN PANEL (FULL EDIT SYSTEM + ADVANCED CRUD)
+// FULL ADMIN DASHBOARD WITH CHARTS
 // =============================
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Users, Trash2, Plus, Pencil, Save } from "lucide-react";
+import {
+  Users,
+  DollarSign,
+  Activity,
+  ShoppingCart,
+  Home,
+  Settings,
+} from "lucide-react";
 
-const STORAGE_KEY = "admin_users";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+} from "recharts";
 
-export default function AdminPanel() {
-  const [users, setUsers] = useState<any[]>([]);
+// =============================
+// SAMPLE DATA (REPLACE LATER WITH API)
+// =============================
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState("user");
+const stats = [
+  { title: "Total Users", value: "1,245", icon: Users },
+  { title: "Revenue", value: "$8,430", icon: DollarSign },
+  { title: "Active Sessions", value: "312", icon: Activity },
+  { title: "Orders", value: "578", icon: ShoppingCart },
+];
 
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editData, setEditData] = useState({ name: "", email: "", role: "user" });
+const salesData = [
+  { name: "Jan", sales: 400 },
+  { name: "Feb", sales: 700 },
+  { name: "Mar", sales: 500 },
+  { name: "Apr", sales: 900 },
+  { name: "May", sales: 650 },
+];
 
-  // LOAD
-  useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    setUsers(stored);
-  }, []);
+const userData = [
+  { name: "Mon", users: 30 },
+  { name: "Tue", users: 50 },
+  { name: "Wed", users: 40 },
+  { name: "Thu", users: 70 },
+  { name: "Fri", users: 60 },
+];
 
-  // SAVE
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
-  }, [users]);
-
-  // ADD USER
-  const addUser = () => {
-    if (!name || !email) return;
-
-    const newUser = {
-      id: Date.now(),
-      name,
-      email,
-      role,
-    };
-
-    setUsers([...users, newUser]);
-    setName("");
-    setEmail("");
-    setRole("user");
-  };
-
-  // DELETE
-  const deleteUser = (id: number) => {
-    setUsers(users.filter((u) => u.id !== id));
-  };
-
-  // START EDIT
-  const startEdit = (user: any) => {
-    setEditingId(user.id);
-    setEditData({ name: user.name, email: user.email, role: user.role });
-  };
-
-  // HANDLE EDIT CHANGE
-  const handleEditChange = (field: string, value: string) => {
-    setEditData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  // SAVE EDIT
-  const saveEdit = (id: number) => {
-    const updated = users.map((u) =>
-      u.id === id ? { ...u, ...editData } : u
-    );
-
-    setUsers(updated);
-    setEditingId(null);
-  };
-
+export default function AdminLayout() {
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+    <div className="flex min-h-screen bg-gray-100">
+      {/* ================= SIDEBAR ================= */}
+      <aside className="w-64 bg-white shadow-lg hidden md:block">
+        <div className="p-6 text-xl font-bold border-b">Admin Panel</div>
 
-      {/* STATS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4 flex justify-between">
-            <div>
-              <p>Total Users</p>
-              <h2 className="text-xl font-bold">{users.length}</h2>
-            </div>
-            <Users />
+        <nav className="p-4 space-y-4">
+          <a href="#" className="flex items-center gap-3 text-gray-700 hover:text-black">
+            <Home size={18} /> Dashboard
+          </a>
+          <a href="#" className="flex items-center gap-3 text-gray-700 hover:text-black">
+            <Users size={18} /> Users
+          </a>
+          <a href="#" className="flex items-center gap-3 text-gray-700 hover:text-black">
+            <ShoppingCart size={18} /> Orders
+          </a>
+          <a href="#" className="flex items-center gap-3 text-gray-700 hover:text-black">
+            <Settings size={18} /> Settings
+          </a>
+        </nav>
+      </aside>
+
+      {/* ================= MAIN CONTENT ================= */}
+      <main className="flex-1 p-6 space-y-6">
+        <h1 className="text-2xl font-bold">Dashboard Overview</h1>
+
+        {/* ===== STATS CARDS ===== */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {stats.map((stat, index) => {
+            const Icon = stat.icon;
+            return (
+              <Card key={index} className="shadow-md rounded-2xl">
+                <CardContent className="flex items-center justify-between p-4">
+                  <div>
+                    <p className="text-sm text-gray-500">{stat.title}</p>
+                    <h2 className="text-xl font-semibold">{stat.value}</h2>
+                  </div>
+                  <Icon className="w-8 h-8 text-gray-400" />
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* ===== CHARTS SECTION ===== */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* SALES LINE CHART */}
+          <Card className="rounded-2xl shadow-md">
+            <CardContent className="p-4">
+              <h2 className="text-lg font-semibold mb-4">Sales Overview</h2>
+
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={salesData}>
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="sales" strokeWidth={3} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* USERS BAR CHART */}
+          <Card className="rounded-2xl shadow-md">
+            <CardContent className="p-4">
+              <h2 className="text-lg font-semibold mb-4">User Growth</h2>
+
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={userData}>
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="users" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* ===== ACTIVITY ===== */}
+        <Card className="rounded-2xl shadow-md">
+          <CardContent className="p-4">
+            <h2 className="text-lg font-semibold mb-2">Recent Activity</h2>
+            <ul className="space-y-2 text-sm text-gray-600">
+              <li>• New user registered</li>
+              <li>• Order #1234 placed</li>
+              <li>• Payment received</li>
+              <li>• Server restarted</li>
+            </ul>
           </CardContent>
         </Card>
-      </div>
-
-      {/* ADD USER */}
-      <Card>
-        <CardContent className="p-4 space-y-3">
-          <h2 className="font-semibold">Add User</h2>
-
-          <input
-            placeholder="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="border p-2 rounded w-full"
-          />
-
-          <input
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="border p-2 rounded w-full"
-          />
-
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            className="border p-2 rounded w-full"
-          >
-            <option value="user">User</option>
-            <option value="admin">Admin</option>
-          </select>
-
-          <button
-            onClick={addUser}
-            className="bg-black text-white px-4 py-2 rounded flex items-center gap-2"
-          >
-            <Plus size={16} /> Add User
-          </button>
-        </CardContent>
-      </Card>
-
-      {/* USERS LIST */}
-      <Card>
-        <CardContent className="p-4">
-          <h2 className="font-semibold mb-3">Users</h2>
-
-          {users.length === 0 ? (
-            <p>No users yet</p>
-          ) : (
-            <div className="space-y-3">
-              {users.map((user) => (
-                <div
-                  key={user.id}
-                  className="border p-3 rounded flex justify-between items-center"
-                >
-                  <div className="w-full max-w-md">
-                    {editingId === user.id ? (
-                      <div className="space-y-2">
-                        <input
-                          value={editData.name}
-                          onChange={(e) => handleEditChange("name", e.target.value)}
-                          className="border p-1 rounded w-full"
-                        />
-
-                        <input
-                          value={editData.email}
-                          onChange={(e) => handleEditChange("email", e.target.value)}
-                          className="border p-1 rounded w-full"
-                        />
-
-                        <select
-                          value={editData.role}
-                          onChange={(e) => handleEditChange("role", e.target.value)}
-                          className="border p-1 rounded w-full"
-                        >
-                          <option value="user">User</option>
-                          <option value="admin">Admin</option>
-                        </select>
-                      </div>
-                    ) : (
-                      <>
-                        <p className="font-medium">{user.name}</p>
-                        <p className="text-sm text-gray-500">{user.email}</p>
-                        <span className="text-xs bg-gray-200 px-2 rounded">
-                          {user.role}
-                        </span>
-                      </>
-                    )}
-                  </div>
-
-                  <div className="flex gap-3 items-center">
-                    {editingId === user.id ? (
-                      <button
-                        onClick={() => saveEdit(user.id)}
-                        className="text-green-600"
-                      >
-                        <Save size={18} />
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => startEdit(user)}
-                        className="text-blue-500"
-                      >
-                        <Pencil size={18} />
-                      </button>
-                    )}
-
-                    <button
-                      onClick={() => deleteUser(user.id)}
-                      className="text-red-500"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      </main>
     </div>
   );
 }
 
+// =============================
+// INSTALL THIS (VERY IMPORTANT)
+// =============================
 
+// npm install recharts
+// npm install lucide-react
+
+// =============================
+// WHERE TO REPLACE
+// =============================
+
+// Replace your admin/dashboard file completely with this code
+
+// =============================
+// NEXT UPGRADE
+// =============================
+
+// - Connect real backend data (API)
+// - Add authentication (protect admin)
+// - Add tables (users/orders control)
