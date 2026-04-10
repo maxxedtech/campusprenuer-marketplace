@@ -1,4 +1,7 @@
+// src/App.tsx
+
 import { Navigate, Route, Routes } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 import AppLayout from "@/components/layout/AppLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -25,37 +28,40 @@ import MyProducts from "@/components/dashboard/entrepreneur/MyProducts";
 import EditProduct from "@/components/dashboard/entrepreneur/EditProduct";
 import ProductDetail from "@/components/dashboard/entrepreneur/ProductDetail";
 
-type Role = "entrepreneur" | "customer" | "admin" | "unknown";
-type StoredUser = { role?: Role } | null;
-
-function readAuth() {
-  const token = localStorage.getItem("token");
-  const userRaw = localStorage.getItem("user");
-
-  let user: StoredUser = null;
-  if (userRaw) {
-    try {
-      user = JSON.parse(userRaw);
-    } catch {
-      user = null;
-    }
-  }
-
-  return { token, user };
-}
+import { getCurrentUser } from "@/lib/auth";
 
 function AccountRedirect() {
-  const { token, user } = readAuth();
-  const isLoggedIn = Boolean(token && user);
-  const role = (user?.role ?? "unknown") as Role;
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  if (!isLoggedIn) return <Navigate to="/login" replace />;
-  if (role === "entrepreneur") {
+  useEffect(() => {
+    const fetchUser = async () => {
+      const u = await getCurrentUser();
+      setUser(u);
+      setLoading(false);
+    };
+
+    fetchUser();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
+  if (!user) return <Navigate to="/login" replace />;
+
+  if (user.role === "entrepreneur") {
     return <Navigate to="/dashboard/entrepreneur" replace />;
   }
-  if (role === "admin") {
+
+  if (user.role === "admin") {
     return <Navigate to="/admin" replace />;
   }
+
   return <Navigate to="/marketplace" replace />;
 }
 
@@ -63,6 +69,8 @@ export default function App() {
   return (
     <Routes>
       <Route element={<AppLayout />}>
+
+        {/* PUBLIC ROUTES */}
         <Route path="/" element={<Index />} />
         <Route path="/get-started" element={<GetStarted />} />
         <Route path="/login" element={<Login />} />
@@ -72,8 +80,10 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
+        {/* AUTO REDIRECT BASED ON ROLE */}
         <Route path="/account" element={<AccountRedirect />} />
 
+        {/* MARKETPLACE */}
         <Route
           path="/marketplace"
           element={
@@ -83,6 +93,7 @@ export default function App() {
           }
         />
 
+        {/* PRODUCT VIEW */}
         <Route
           path="/product/:id"
           element={
@@ -92,6 +103,7 @@ export default function App() {
           }
         />
 
+        {/* CART */}
         <Route
           path="/cart"
           element={
@@ -101,6 +113,7 @@ export default function App() {
           }
         />
 
+        {/* CHAT */}
         <Route
           path="/chat"
           element={
@@ -110,6 +123,7 @@ export default function App() {
           }
         />
 
+        {/* ENTREPRENEUR DASHBOARD */}
         <Route
           path="/dashboard/entrepreneur"
           element={
@@ -125,6 +139,7 @@ export default function App() {
           <Route path="product/:id" element={<ProductDetail />} />
         </Route>
 
+        {/* ADMIN PANEL */}
         <Route
           path="/admin"
           element={
@@ -134,7 +149,9 @@ export default function App() {
           }
         />
 
+        {/* 404 */}
         <Route path="*" element={<NotFound />} />
+
       </Route>
     </Routes>
   );
