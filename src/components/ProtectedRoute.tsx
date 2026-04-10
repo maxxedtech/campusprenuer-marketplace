@@ -1,25 +1,11 @@
+// src/components/ProtectedRoute.tsx
+
 import { Navigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import { getCurrentUser } from "@/lib/auth";
 
-type Role = "entrepreneur" | "customer" | "admin" | "unknown";
-type StoredUser = { role?: Role } | null;
-
-function readAuth() {
-  const token = localStorage.getItem("token");
-  const userRaw = localStorage.getItem("user");
-
-  let user: StoredUser = null;
-
-  if (userRaw) {
-    try {
-      user = JSON.parse(userRaw);
-    } catch {
-      user = null;
-    }
-  }
-
-  return { token, user };
-}
+type Role = "entrepreneur" | "customer" | "admin";
 
 export default function ProtectedRoute({
   children,
@@ -28,25 +14,46 @@ export default function ProtectedRoute({
   children: ReactNode;
   allow?: Role[];
 }) {
-  const { token, user } = readAuth();
-  const isLoggedIn = Boolean(token && user);
-  const role = (user?.role ?? "unknown") as Role;
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
 
-  if (!isLoggedIn) {
+  useEffect(() => {
+    const checkUser = async () => {
+      const currentUser = await getCurrentUser();
+      setUser(currentUser);
+      setLoading(false);
+    };
+
+    checkUser();
+  }, []);
+
+  // 🔄 Loading state (prevents flicker)
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-sm">Checking authentication...</p>
+      </div>
+    );
+  }
+
+  // ❌ Not logged in
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  if (allow && !allow.includes(role)) {
-    if (role === "entrepreneur") {
+  // 🔐 Role restriction
+  if (allow && !allow.includes(user.role)) {
+    if (user.role === "entrepreneur") {
       return <Navigate to="/dashboard/entrepreneur" replace />;
     }
 
-    if (role === "admin") {
+    if (user.role === "admin") {
       return <Navigate to="/admin" replace />;
     }
 
     return <Navigate to="/marketplace" replace />;
   }
 
+  // ✅ Allowed
   return <>{children}</>;
 }
