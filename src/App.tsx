@@ -30,18 +30,19 @@ import ProductDetail from "@/components/dashboard/entrepreneur/ProductDetail";
 
 import { getCurrentUser } from "@/lib/auth";
 
+// 🔥 NEW: Supabase-based redirect
 function AccountRedirect() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchUser = async () => {
+    const loadUser = async () => {
       const u = await getCurrentUser();
       setUser(u);
       setLoading(false);
     };
 
-    fetchUser();
+    loadUser();
   }, []);
 
   if (loading) {
@@ -80,7 +81,7 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
-        {/* AUTO REDIRECT BASED ON ROLE */}
+        {/* AUTO ROLE REDIRECT */}
         <Route path="/account" element={<AccountRedirect />} />
 
         {/* MARKETPLACE */}
@@ -103,7 +104,7 @@ export default function App() {
           }
         />
 
-        {/* CART */}
+        {/* CART (CUSTOMER ONLY) */}
         <Route
           path="/cart"
           element={
@@ -139,7 +140,7 @@ export default function App() {
           <Route path="product/:id" element={<ProductDetail />} />
         </Route>
 
-        {/* ADMIN PANEL */}
+        {/* ADMIN */}
         <Route
           path="/admin"
           element={
