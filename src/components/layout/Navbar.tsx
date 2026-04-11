@@ -1,4 +1,6 @@
-import { useMemo, useRef, useState } from "react";
+// src/components/layout/Navbar.tsx
+
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Menu,
@@ -13,34 +15,36 @@ import {
   Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { readAuth } from "@/lib/authStorage";
+import { getCurrentUser } from "@/lib/auth";
+import { supabase } from "@/supabase";
 
-type Role = "entrepreneur" | "customer" | "admin" | "unknown";
+type Role = "entrepreneur" | "customer" | "admin";
 
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
+
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+
+  const [user, setUser] = useState<any>(null);
 
   const loginClickCount = useRef(0);
   const loginClickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { user, token } = readAuth();
-  const isLoggedIn = Boolean(token && user);
-  const role = (user?.role ?? "unknown") as Role;
+  // 🔥 LOAD USER FROM SUPABASE
+  useEffect(() => {
+    getCurrentUser().then(setUser);
+  }, []);
+
+  const isLoggedIn = !!user;
+  const role = (user?.role || "customer") as Role;
 
   const displayName = useMemo(() => {
-    if (!user?.name) return "Account";
-    return user.name.split(" ")[0];
+    return user?.name?.split(" ")[0] || "Account";
   }, [user]);
 
-  const roleLabel = useMemo(() => {
-    if (role === "entrepreneur") return "Entrepreneur";
-    if (role === "customer") return "Customer";
-    if (role === "admin") return "Admin";
-    return "Guest";
-  }, [role]);
+  const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -49,294 +53,104 @@ export default function Navbar() {
     setProfileOpen(false);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    closeMenus();
+  // 🔥 LOGOUT (SUPABASE)
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
     navigate("/login");
   };
 
-  const handleSettings = () => {
-    closeMenus();
-    alert("Settings page coming soon");
-  };
-
   const handleLoginClick = () => {
-    loginClickCount.current += 1;
+    loginClickCount.current++;
 
     if (loginClickTimer.current) {
       clearTimeout(loginClickTimer.current);
-      loginClickTimer.current = null;
     }
 
     if (loginClickCount.current >= 3) {
       loginClickCount.current = 0;
-      closeMenus();
       navigate("/admin-login");
       return;
     }
 
     loginClickTimer.current = setTimeout(() => {
-      const clicks = loginClickCount.current;
       loginClickCount.current = 0;
-      loginClickTimer.current = null;
-
-      if (clicks < 3) {
-        closeMenus();
-        navigate("/login");
-      }
+      navigate("/login");
     }, 700);
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+    <header className="sticky top-0 z-50 border-b bg-background/95">
       <nav className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link
-          to="/"
-          className="flex items-center gap-2 text-lg font-bold tracking-tight"
-          onClick={closeMenus}
-        >
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold">
-            C
-          </span>
-          <span>CampusPrenuer</span>
+
+        <Link to="/" className="flex items-center gap-2 font-bold">
+          <span className="bg-primary text-white px-2 py-1 rounded">C</span>
+          CampusPrenuer
         </Link>
 
         <div className="hidden md:flex items-center gap-3">
-          <Link
-            to="/marketplace"
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-muted ${
-              isActive("/marketplace") ? "bg-muted" : ""
-            }`}
-          >
+
+          <Link to="/marketplace" className={isActive("/marketplace") ? "font-bold" : ""}>
             Marketplace
           </Link>
 
           {isLoggedIn && (
             <>
-              <Link
-                to="/chat"
-                className={`rounded-lg p-2 transition hover:bg-muted ${
-                  isActive("/chat") ? "bg-muted" : ""
-                }`}
-                aria-label="Chat"
-              >
-                <MessageCircle className="h-5 w-5" />
+              <Link to="/chat">
+                <MessageCircle />
               </Link>
 
               {role === "customer" && (
-                <Link
-                  to="/cart"
-                  className={`rounded-lg p-2 transition hover:bg-muted ${
-                    isActive("/cart") ? "bg-muted" : ""
-                  }`}
-                  aria-label="Cart"
-                >
-                  <ShoppingCart className="h-5 w-5" />
+                <Link to="/cart">
+                  <ShoppingCart />
                 </Link>
               )}
             </>
           )}
 
           {!isLoggedIn ? (
-            <div className="flex items-center gap-2">
+            <>
               <Button variant="ghost" onClick={handleLoginClick}>
                 Login
               </Button>
               <Button onClick={() => navigate("/get-started")}>
                 Get Started
               </Button>
-            </div>
+            </>
           ) : (
             <div className="relative">
-              <button
-                onClick={() => setProfileOpen((v) => !v)}
-                className="flex items-center gap-3 rounded-xl border px-3 py-2 text-left transition hover:bg-muted"
-              >
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
-                  <User className="h-4 w-4" />
-                </div>
-
-                <div className="leading-tight">
-                  <div className="text-sm font-semibold">{displayName}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {roleLabel}
-                  </div>
-                </div>
-
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              <button onClick={() => setProfileOpen(!profileOpen)}>
+                {displayName}
               </button>
 
               {profileOpen && (
-                <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-xl border bg-background shadow-lg">
-                  <div className="border-b px-4 py-3">
-                    <div className="text-sm font-semibold">
-                      {user?.name || "User"}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {roleLabel}
-                    </div>
-                  </div>
+                <div className="absolute right-0 mt-2 w-56 bg-white border rounded shadow">
 
-                  <div className="p-2">
-                    {role === "entrepreneur" && (
-                      <button
-                        onClick={() => {
-                          closeMenus();
-                          navigate("/dashboard/entrepreneur");
-                        }}
-                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted"
-                      >
-                        <LayoutDashboard className="h-4 w-4" />
-                        Entrepreneur Dashboard
-                      </button>
-                    )}
-
-                    {role === "admin" && (
-                      <button
-                        onClick={() => {
-                          closeMenus();
-                          navigate("/admin");
-                        }}
-                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted"
-                      >
-                        <Shield className="h-4 w-4" />
-                        Admin Panel
-                      </button>
-                    )}
-
-                    <button
-                      onClick={handleSettings}
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted"
-                    >
-                      <Settings className="h-4 w-4" />
-                      Settings
-                    </button>
-
-                    <button
-                      onClick={handleLogout}
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-muted"
-                    >
-                      <LogOut className="h-4 w-4" />
-                      Logout
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <button
-          onClick={() => setMobileOpen((v) => !v)}
-          className="md:hidden inline-flex items-center justify-center rounded-lg border p-2"
-          aria-label="Toggle menu"
-        >
-          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
-      </nav>
-
-      {mobileOpen && (
-        <div className="border-t md:hidden">
-          <div className="container mx-auto space-y-2 px-4 py-4">
-            <Link
-              to="/marketplace"
-              className="block rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted"
-              onClick={closeMenus}
-            >
-              Marketplace
-            </Link>
-
-            {isLoggedIn && (
-              <>
-                <Link
-                  to="/chat"
-                  className="block rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted"
-                  onClick={closeMenus}
-                >
-                  Chat
-                </Link>
-
-                {role === "customer" && (
-                  <Link
-                    to="/cart"
-                    className="block rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted"
-                    onClick={closeMenus}
-                  >
-                    Cart
-                  </Link>
-                )}
-              </>
-            )}
-
-            {!isLoggedIn ? (
-              <div className="flex flex-col gap-2 pt-2">
-                <Button variant="ghost" onClick={handleLoginClick}>
-                  Login
-                </Button>
-                <Button onClick={() => navigate("/get-started")}>
-                  Get Started
-                </Button>
-              </div>
-            ) : (
-              <div className="rounded-xl border p-3">
-                <div className="mb-3">
-                  <div className="text-sm font-semibold">
-                    {user?.name || "User"}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {roleLabel}
-                  </div>
-                </div>
-
-                <div className="space-y-1">
                   {role === "entrepreneur" && (
-                    <button
-                      onClick={() => {
-                        closeMenus();
-                        navigate("/dashboard/entrepreneur");
-                      }}
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted"
-                    >
-                      <LayoutDashboard className="h-4 w-4" />
-                      Entrepreneur Dashboard
+                    <button onClick={() => navigate("/dashboard/entrepreneur")}>
+                      Dashboard
                     </button>
                   )}
 
                   {role === "admin" && (
-                    <button
-                      onClick={() => {
-                        closeMenus();
-                        navigate("/admin");
-                      }}
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted"
-                    >
-                      <Shield className="h-4 w-4" />
+                    <button onClick={() => navigate("/admin")}>
                       Admin Panel
                     </button>
                   )}
 
-                  <button
-                    onClick={handleSettings}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted"
-                  >
-                    <Settings className="h-4 w-4" />
-                    Settings
-                  </button>
-
-                  <button
-                    onClick={handleLogout}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-muted"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    Logout
-                  </button>
+                  <button onClick={handleLogout}>Logout</button>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
+
         </div>
-      )}
+
+        <button onClick={() => setMobileOpen(!mobileOpen)}>
+          {mobileOpen ? <X /> : <Menu />}
+        </button>
+
+      </nav>
     </header>
   );
 }
