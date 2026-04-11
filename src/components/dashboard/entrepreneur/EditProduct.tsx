@@ -1,43 +1,13 @@
+// src/components/dashboard/entrepreneur/EditProduct.tsx
+
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getSellerId, getSellerName } from "@/utils/authStorage";
-import {
-  getProductById,
-  updateProduct,
-  Product,
-} from "@/utils/productStorage";
 
-async function fileToResizedDataUrl(file: File, maxSize = 900, quality = 0.75) {
-  const dataUrl: string = await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-
-  const img: HTMLImageElement = await new Promise((resolve, reject) => {
-    const i = new Image();
-    i.onload = () => resolve(i);
-    i.onerror = reject;
-    i.src = dataUrl;
-  });
-
-  const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
-  const w = Math.round(img.width * scale);
-  const h = Math.round(img.height * scale);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return dataUrl;
-
-  ctx.drawImage(img, 0, 0, w, h);
-  return canvas.toDataURL("image/jpeg", quality);
-}
+import { getCurrentUser } from "@/lib/auth";
+import { updateProduct } from "@/lib/products";
+import { supabase } from "@/supabase";
 
 export default function EditProduct() {
   const { id } = useParams();
@@ -47,199 +17,132 @@ export default function EditProduct() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const [product, setProduct] = useState<Product | null>(null);
+  const [product, setProduct] = useState<any>(null);
 
-  // form fields
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
-  const [imageDataUrl, setImageDataUrl] = useState("");
-  const [category, setCategory] = useState("");
+  const [image, setImage] = useState("");
   const [description, setDescription] = useState("");
 
+  // 🔥 LOAD PRODUCT FROM SUPABASE
   useEffect(() => {
-    setError("");
-    setLoading(true);
+    const load = async () => {
+      setLoading(true);
+      setError("");
 
-    if (!id) {
-      setError("Missing product ID.");
-      setLoading(false);
-      return;
-    }
+      try {
+        if (!id) throw new Error("Missing product ID");
 
-    const sellerId = getSellerId();
-    if (!sellerId) {
-      setError("You are not logged in.");
-      setLoading(false);
-      return;
-    }
+        const user = await getCurrentUser();
+        if (!user) throw new Error("Not logged in");
 
-    const found = getProductById(id);
-    if (!found) {
-      setError("Product not found.");
-      setLoading(false);
-      return;
-    }
+        const { data, error } = await supabase
+          .from("products")
+          .select("*")
+          .eq("id", id)
+          .single();
 
-    if (found.sellerId !== sellerId) {
-      setError("You are not allowed to edit this product.");
-      setLoading(false);
-      return;
-    }
+        if (error || !data) throw new Error("Product not found");
 
-    setProduct(found);
-    setName(found.name || "");
-    setPrice(found.price || "");
-    setImageDataUrl(found.imageUrl || "");
-    setCategory(found.category || "");
-    setDescription(found.description || "");
-    setLoading(false);
+        if (data.owner_id !== user.id) {
+          throw new Error("You cannot edit this product");
+        }
+
+        setProduct(data);
+        setName(data.title || "");
+        setPrice(String(data.price || ""));
+        setImage(data.image_url || "");
+        setDescription(data.description || "");
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
   }, [id]);
 
-  const handlePickImage = async (file: File | null) => {
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setError("Please select an image file.");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setError("Image too large (max 5MB).");
-      return;
-    }
-
-    try {
-      const resized = await fileToResizedDataUrl(file, 900, 0.75);
-      setImageDataUrl(resized);
-    } catch (e) {
-      console.error(e);
-      setError("Failed to load image. Try another one.");
-    }
-  };
-
-  const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
+  // 🔥 UPDATE PRODUCT
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setSaving(true);
+    setError("");
 
     try {
-      if (!product) {
-        setError("Product not loaded.");
-        setSaving(false);
-        return;
-      }
+      if (!product) throw new Error("No product loaded");
 
-      const sellerId = getSellerId();
-      if (!sellerId) {
-        setError("You are not logged in.");
-        setSaving(false);
-        return;
-      }
+      await updateProduct(product.id, {
+        title: name,
+        price: Number(price),
+        image_url: image,
+        description,
+      });
 
-      const updated: Product = {
-        ...product,
-        name: name.trim(),
-        price: price.trim(),
-        imageUrl: imageDataUrl || "",
-        category: category.trim(),
-        description: description.trim(),
-        seller: getSellerName(),
-        sellerId,
-      };
-
-      updateProduct(updated);
       navigate("/dashboard/entrepreneur/products");
     } catch (err: any) {
-      console.error(err);
-      setError(err?.message || "Failed to update product.");
+      setError(err.message || "Update failed");
+    } finally {
       setSaving(false);
     }
   };
 
-  if (loading) {
-    return <div className="text-sm text-muted-foreground">Loading...</div>;
-  }
+  if (loading) return <p>Loading...</p>;
 
   if (error && !product) {
-    return (
-      <div className="bg-white border rounded-xl p-6 text-sm text-red-600">
-        {error}
-      </div>
-    );
+    return <p className="text-red-500">{error}</p>;
   }
 
   return (
     <div className="max-w-xl space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Edit Product</h1>
+
+      <div className="flex justify-between items-center">
+        <h1 className="text-xl font-bold">Edit Product</h1>
         <Button variant="outline" onClick={() => navigate(-1)}>
           Back
         </Button>
       </div>
 
-      {error ? (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
-          {error}
-        </div>
-      ) : null}
+      {error && <p className="text-red-500">{error}</p>}
 
-      <form onSubmit={handleSave} className="space-y-3 bg-white p-4 rounded-xl border">
+      <form onSubmit={handleSave} className="space-y-3">
+
         <Input
           placeholder="Product name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          required
         />
 
         <Input
-          placeholder="Price (e.g. 3500)"
+          placeholder="Price"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
-          required
         />
-
-        <div className="space-y-2">
-          <div className="text-sm font-medium">Product Photo (optional)</div>
-          <Input
-            type="file"
-            accept="image/*"
-            onChange={(e) => handlePickImage(e.target.files?.[0] || null)}
-          />
-
-          {imageDataUrl ? (
-            <div className="border rounded-xl p-2">
-              <img
-                src={imageDataUrl}
-                alt="preview"
-                className="w-full max-h-60 object-cover rounded-lg"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                className="mt-2 w-full"
-                onClick={() => setImageDataUrl("")}
-              >
-                Remove Photo
-              </Button>
-            </div>
-          ) : null}
-        </div>
 
         <Input
-          placeholder="Category (optional)"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
+          placeholder="Image URL"
+          value={image}
+          onChange={(e) => setImage(e.target.value)}
         />
 
+        {image && (
+          <img
+            src={image}
+            className="w-full h-40 object-cover rounded"
+          />
+        )}
+
         <textarea
-          className="w-full border rounded-lg p-3 min-h-[120px]"
+          className="w-full border p-2"
           placeholder="Description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          required
         />
 
-        <Button type="submit" className="w-full" disabled={saving}>
+        <Button disabled={saving}>
           {saving ? "Saving..." : "Update Product"}
         </Button>
+
       </form>
     </div>
   );
