@@ -1,5 +1,4 @@
-// src/lib/ordersStorage.ts
-import { readAuth } from "@/lib/authStorage";
+import { supabase } from "@/supabase";
 import { getProductById } from "@/utils/productStorage";
 import { clearCart, readCart } from "@/lib/cartStorage";
 
@@ -42,41 +41,38 @@ export function writeOrders(items: Order[]) {
   localStorage.setItem(KEY, JSON.stringify(items));
 }
 
-function priceToNumber(price: any) {
-  // supports "3500" or "3,500"
-  const cleaned = String(price ?? "0").replace(/[^\d.]/g, "");
-  const n = Number(cleaned || 0);
-  return Number.isFinite(n) ? n : 0;
+async function getCurrentUser() {
+  const { data } = await supabase.auth.getUser();
+  return data.user;
 }
 
-export function placeOrderFromCart() {
-  const { user } = readAuth();
+export async function placeOrderFromCart() {
+  const user = await getCurrentUser();
   if (!user) throw new Error("Please login");
-  if (user.role !== "customer") throw new Error("Only customers can place orders");
 
   const cart = readCart();
   if (cart.length === 0) throw new Error("Cart is empty");
 
   const items: OrderItem[] = cart.map((c) => {
     const p = getProductById(c.productId);
-    if (!p) throw new Error("A product in your cart no longer exists");
+    if (!p) throw new Error("Product not found");
 
     return {
       productId: p.id,
       name: p.name,
-      price: priceToNumber(p.price),
-      qty: Math.max(1, Math.floor(Number(c.qty) || 1)),
+      price: Number(p.price || 0),
+      qty: c.qty,
       sellerId: p.sellerId,
       sellerName: p.seller || "Entrepreneur",
     };
   });
 
-  const total = items.reduce((sum, i) => sum + i.price * i.qty, 0);
+  const total = items.reduce((s, i) => s + i.price * i.qty, 0);
 
   const order: Order = {
     id: uid(),
     customerId: user.id,
-    customerName: user.name,
+    customerName: user.email || "Customer",
     items,
     total,
     status: "pending",
@@ -85,6 +81,7 @@ export function placeOrderFromCart() {
 
   writeOrders([order, ...readOrders()]);
   clearCart();
+
   return order;
 }
 
@@ -93,24 +90,21 @@ export function ordersForCustomer(customerId: string) {
 }
 
 export function ordersForSeller(sellerId: string) {
-  return readOrders().filter((o) => o.items.some((i) => i.sellerId === sellerId));
+  return readOrders().filter((o) =>
+    o.items.some((i) => i.sellerId === sellerId)
+  );
 }
 
-export function updateOrderStatus(orderId: string, status: Order["status"]) {
-  const { user } = readAuth();
+export async function updateOrderStatus(orderId: string, status: Order["status"]) {
+  const user = await getCurrentUser();
   if (!user) throw new Error("Not logged in");
 
   const all = readOrders();
   const idx = all.findIndex((o) => o.id === orderId);
   if (idx === -1) throw new Error("Order not found");
 
-  const isAdmin = user.role === "admin";
-  const isSeller =
-    user.role === "entrepreneur" && all[idx].items.some((i) => i.sellerId === user.id);
-
-  if (!isAdmin && !isSeller) throw new Error("Not allowed");
-
-  all[idx] = { ...all[idx], status };
+  all[idx].status = status;
   writeOrders(all);
+
   return all[idx];
 }
