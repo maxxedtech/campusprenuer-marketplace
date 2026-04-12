@@ -97,8 +97,17 @@ export default function ProductDetail() {
             Seller: {product.owner_name}
           </p>
 
+          {/* 🔥 UPDATED CHAT BUTTON */}
           <div className="mt-6 flex gap-3">
-            <Button>Chat Seller</Button>
+            <Button
+              onClick={() =>
+                navigate(
+                  `/chat?seller=${product.owner_id}&name=${product.owner_name}`
+                )
+              }
+            >
+              Chat Seller
+            </Button>
 
             <Button variant="outline" asChild>
               <Link to="/marketplace">Back</Link>
