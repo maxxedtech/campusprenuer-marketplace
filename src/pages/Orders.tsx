@@ -1,10 +1,14 @@
 import { useMemo } from "react";
-import { readAuth } from "@/lib/authStorage";
+import { useAuth } from "@/contexts/AuthContext";
 import { ordersForCustomer } from "@/lib/ordersStorage";
 
 export default function Orders() {
-  const { user } = readAuth();
-  const orders = useMemo(() => (user ? ordersForCustomer(user.id) : []), [user]);
+  const { user } = useAuth();
+
+  const orders = useMemo(
+    () => (user ? ordersForCustomer(user.id) : []),
+    [user]
+  );
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10">
@@ -17,8 +21,12 @@ export default function Orders() {
           {orders.map((o) => (
             <div key={o.id} className="rounded-xl border p-4">
               <div className="flex items-center justify-between">
-                <div className="font-semibold">Order #{o.id.slice(0, 8)}</div>
-                <div className="text-sm rounded-full border px-2 py-1">{o.status}</div>
+                <div className="font-semibold">
+                  Order #{o.id.slice(0, 8)}
+                </div>
+                <div className="text-sm rounded-full border px-2 py-1">
+                  {o.status}
+                </div>
               </div>
 
               <div className="text-sm text-gray-600 mt-1">
