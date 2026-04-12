@@ -1,7 +1,4 @@
-// src/App.tsx
-
 import { Navigate, Route, Routes } from "react-router-dom";
-import { useEffect, useState } from "react";
 
 import AppLayout from "@/components/layout/AppLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -13,6 +10,7 @@ import Marketplace from "@/pages/Marketplace";
 import AdminLogin from "@/pages/AdminLogin";
 import AdminPanel from "@/pages/AdminPanel";
 import ChatPage from "@/pages/ChatPage";
+import InboxPage from "@/pages/InboxPage";
 import SignupCustomer from "@/pages/SignupCustomer";
 import SignupEntrepreneur from "@/pages/SignupEntrepreneur";
 import ForgotPassword from "@/pages/ForgotPassword";
@@ -28,50 +26,11 @@ import MyProducts from "@/components/dashboard/entrepreneur/MyProducts";
 import EditProduct from "@/components/dashboard/entrepreneur/EditProduct";
 import ProductDetail from "@/components/dashboard/entrepreneur/ProductDetail";
 
-import { getCurrentUser } from "@/lib/auth";
-
-// 🔥 NEW: Supabase-based redirect
-function AccountRedirect() {
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const loadUser = async () => {
-      const u = await getCurrentUser();
-      setUser(u);
-      setLoading(false);
-    };
-
-    loadUser();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <p>Loading...</p>
-      </div>
-    );
-  }
-
-  if (!user) return <Navigate to="/login" replace />;
-
-  if (user.role === "entrepreneur") {
-    return <Navigate to="/dashboard/entrepreneur" replace />;
-  }
-
-  if (user.role === "admin") {
-    return <Navigate to="/admin" replace />;
-  }
-
-  return <Navigate to="/marketplace" replace />;
-}
-
 export default function App() {
   return (
     <Routes>
       <Route element={<AppLayout />}>
 
-        {/* PUBLIC ROUTES */}
         <Route path="/" element={<Index />} />
         <Route path="/get-started" element={<GetStarted />} />
         <Route path="/login" element={<Login />} />
@@ -81,10 +40,26 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
-        {/* AUTO ROLE REDIRECT */}
-        <Route path="/account" element={<AccountRedirect />} />
+        {/* 🔥 INBOX PAGE */}
+        <Route
+          path="/chat"
+          element={
+            <ProtectedRoute>
+              <InboxPage />
+            </ProtectedRoute>
+          }
+        />
 
-        {/* MARKETPLACE */}
+        {/* 🔥 SINGLE CHAT PAGE */}
+        <Route
+          path="/chat-room"
+          element={
+            <ProtectedRoute>
+              <ChatPage />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/marketplace"
           element={
@@ -94,7 +69,6 @@ export default function App() {
           }
         />
 
-        {/* PRODUCT VIEW */}
         <Route
           path="/product/:id"
           element={
@@ -104,7 +78,6 @@ export default function App() {
           }
         />
 
-        {/* CART (CUSTOMER ONLY) */}
         <Route
           path="/cart"
           element={
@@ -114,17 +87,6 @@ export default function App() {
           }
         />
 
-        {/* CHAT */}
-        <Route
-          path="/chat"
-          element={
-            <ProtectedRoute>
-              <ChatPage />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* ENTREPRENEUR DASHBOARD */}
         <Route
           path="/dashboard/entrepreneur"
           element={
@@ -140,7 +102,6 @@ export default function App() {
           <Route path="product/:id" element={<ProductDetail />} />
         </Route>
 
-        {/* ADMIN */}
         <Route
           path="/admin"
           element={
@@ -150,7 +111,6 @@ export default function App() {
           }
         />
 
-        {/* 404 */}
         <Route path="*" element={<NotFound />} />
 
       </Route>
