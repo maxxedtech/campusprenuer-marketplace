@@ -6,8 +6,7 @@ import { getCurrentUser } from "@/lib/auth";
 import {
   getOrCreateConversation,
   sendMessage,
-  sendImage,
-  sendAudio,
+  deleteMessage,
   markAsRead,
 } from "@/lib/chat";
 
@@ -25,9 +24,7 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState("");
 
-  const [recording, setRecording] = useState(false);
-  const [mediaRecorder, setMediaRecorder] = useState<any>(null);
-
+  /* ================= LOAD ================= */
   useEffect(() => {
     const load = async () => {
       const current = await getCurrentUser();
@@ -62,6 +59,21 @@ export default function ChatPage() {
             setMessages((prev) => [...prev, payload.new]);
           }
         )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "messages",
+          },
+          (payload) => {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === payload.new.id ? payload.new : m
+              )
+            );
+          }
+        )
         .subscribe();
 
       return () => supabase.removeChannel(channel);
@@ -78,36 +90,12 @@ export default function ChatPage() {
     setText("");
   };
 
-  /* ================= IMAGE ================= */
-  const handleImage = async (e: any) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  /* ================= DELETE ================= */
+  const handleDelete = async (id: string) => {
+    const confirmDelete = window.confirm("Delete this message?");
+    if (!confirmDelete) return;
 
-    await sendImage(conversation.id, user.id, file);
-  };
-
-  /* ================= AUDIO ================= */
-  const startRecording = async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-    const recorder = new MediaRecorder(stream);
-    const chunks: any[] = [];
-
-    recorder.ondataavailable = (e) => chunks.push(e.data);
-
-    recorder.onstop = async () => {
-      const blob = new Blob(chunks, { type: "audio/webm" });
-      await sendAudio(conversation.id, user.id, blob);
-    };
-
-    recorder.start();
-    setMediaRecorder(recorder);
-    setRecording(true);
-  };
-
-  const stopRecording = () => {
-    mediaRecorder.stop();
-    setRecording(false);
+    await deleteMessage(id);
   };
 
   return (
@@ -127,10 +115,15 @@ export default function ChatPage() {
           return (
             <div
               key={m.id}
-              className={`flex items-end gap-2 ${
+              onContextMenu={(e) => {
+                e.preventDefault();
+                handleDelete(m.id);
+              }}
+              className={`flex items-end gap-2 transition-all duration-300 ${
                 isMe ? "justify-end" : "justify-start"
               }`}
             >
+              {/* OTHER AVATAR */}
               {!isMe && (
                 <img
                   src="/default-avatar.png"
@@ -138,29 +131,36 @@ export default function ChatPage() {
                 />
               )}
 
+              {/* MESSAGE */}
               <div
-                className={`px-3 py-2 rounded-2xl max-w-xs text-sm shadow ${
-                  isMe
-                    ? "bg-blue-500 text-white"
-                    : "bg-gray-200"
+                className={`px-3 py-2 rounded-2xl max-w-xs text-sm shadow transform transition-all duration-300 ${
+                  m.deleted
+                    ? "opacity-50 scale-95 italic bg-gray-200"
+                    : isMe
+                    ? "bg-blue-500 text-white rounded-br-none"
+                    : "bg-gray-200 rounded-bl-none"
                 }`}
               >
-                {m.content && <p>{m.content}</p>}
-
-                {m.image_url && (
-                  <img
-                    src={m.image_url}
-                    className="rounded mt-1 max-w-[200px]"
-                  />
+                {/* DELETED */}
+                {m.deleted ? (
+                  <p className="italic text-xs">
+                    This message was deleted
+                  </p>
+                ) : (
+                  <>
+                    {m.content && <p>{m.content}</p>}
+                  </>
                 )}
 
-                {m.audio_url && (
-                  <audio controls className="mt-1">
-                    <source src={m.audio_url} />
-                  </audio>
+                {/* ✔✔ SEEN */}
+                {isMe && !m.deleted && (
+                  <span className="text-[10px] mt-1 block text-right opacity-80">
+                    {m.is_read ? "✔✔ Seen" : "✔ Sent"}
+                  </span>
                 )}
               </div>
 
+              {/* YOUR AVATAR */}
               {isMe && (
                 <img
                   src={user?.avatar_url || "/default-avatar.png"}
@@ -175,23 +175,16 @@ export default function ChatPage() {
       {/* INPUT */}
       <div className="flex items-center gap-2 mt-3">
 
-        <input type="file" onChange={handleImage} />
-
         <Input
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Type message..."
         />
 
-        <Button onClick={handleSend}>Send</Button>
+        <Button onClick={handleSend}>
+          Send
+        </Button>
 
-        {!recording ? (
-          <Button onClick={startRecording}>🎤</Button>
-        ) : (
-          <Button onClick={stopRecording} className="bg-red-500">
-            Stop
-          </Button>
-        )}
       </div>
 
     </div>
