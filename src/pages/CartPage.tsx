@@ -1,50 +1,32 @@
-import { useState, useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ShoppingCart, MessageCircle, User, LogOut, Menu, X, Store } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/contexts/AuthContext";
-import { cartCount } from "@/lib/cartStorage";
 
-export default function Navbar() {
-  const nav = useNavigate();
-  const location = useLocation();
-  const { user, logout } = useAuth();
+export default function CartPage() {
+  const [items, setItems] = useState<any[]>([]);
 
-  const isLoggedIn = !!user;
-
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [cartItems, setCartItems] = useState(0);
-
+  // 🔥 TEMP: empty cart (until backend cart is added)
   useEffect(() => {
-    if (user?.role === "customer") {
-      setCartItems(cartCount());
-    } else {
-      setCartItems(0);
-    }
-  }, [user, location.pathname]);
-
-  const handleLogout = async () => {
-    await logout();
-    nav("/");
-  };
+    setItems([]);
+  }, []);
 
   return (
-    <nav className="bg-white border-b p-4 flex justify-between">
-      <Link to="/">CampusPrenuer</Link>
+    <div className="max-w-4xl mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-6">Cart</h1>
 
-      <div className="flex gap-3">
-        {isLoggedIn && <button onClick={() => nav("/chat")}><MessageCircle /></button>}
+      {items.length === 0 ? (
+        <p className="text-gray-500">Your cart is empty</p>
+      ) : (
+        <div className="space-y-4">
+          {items.map((item, i) => (
+            <div key={i} className="border p-4 rounded">
+              <p>{item.name}</p>
+              <p>₦{item.price}</p>
+            </div>
+          ))}
 
-        {isLoggedIn && (
-          <button onClick={handleLogout}>
-            <LogOut />
-          </button>
-        )}
-
-        {!isLoggedIn && (
-          <Button onClick={() => nav("/login")}>Login</Button>
-        )}
-      </div>
-    </nav>
+          <Button className="mt-4">Checkout</Button>
+        </div>
+      )}
+    </div>
   );
 }
