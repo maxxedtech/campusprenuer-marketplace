@@ -1,111 +1,123 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+import { getCurrentUser } from "@/lib/auth";
+import { getUserConversations } from "@/lib/chat";
 import { supabase } from "@/supabase";
 
-// 🔥 CREATE OR GET CONVERSATION
-export async function getOrCreateConversation(userId: string, otherId: string) {
-  const { data } = await supabase.from("conversations").select("*");
+export default function InboxPage() {
+  const navigate = useNavigate();
 
-  let convo = data?.find(
-    (c) =>
-      (c.user1_id === userId && c.user2_id === otherId) ||
-      (c.user1_id === otherId && c.user2_id === userId)
-  );
+  const [convos, setConvos] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  if (!convo) {
-    const { data: newConvo } = await supabase
-      .from("conversations")
-      .insert([
-        {
-          user1_id: userId,
-          user2_id: otherId,
-        },
-      ])
-      .select()
-      .single();
+  useEffect(() => {
+    const load = async () => {
+      const user = await getCurrentUser();
+      if (!user) return;
 
-    return newConvo;
-  }
+      const data = await getUserConversations(user.id);
+      setConvos(data || []);
+      setLoading(false);
 
-  return convo;
-}
+      // 🔥 REAL-TIME UPDATE
+      const channel = supabase
+        .channel("inbox-ui")
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "messages",
+          },
+          async () => {
+            const updated = await getUserConversations(user.id);
+            setConvos(updated || []);
+          }
+        )
+        .subscribe();
 
-// 💬 SEND MESSAGE
-export async function sendMessage(
-  conversationId: string,
-  senderId: string,
-  content: string
-) {
-  await supabase.from("messages").insert([
-    {
-      conversation_id: conversationId,
-      sender_id: senderId,
-      content,
-      is_read: false,
-    },
-  ]);
-}
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    };
 
-// 📩 GET UNREAD COUNT
-export async function getUnreadCount(userId: string) {
-  const { data } = await supabase.from("messages").select("*");
+    load();
+  }, []);
+
+  if (loading) return <div className="p-6">Loading...</div>;
 
   return (
-    data?.filter(
-      (m) => m.sender_id !== userId && m.is_read === false
-    ).length || 0
+    <div className="max-w-2xl mx-auto p-4">
+
+      <h1 className="text-2xl font-bold mb-4">Messages</h1>
+
+      {convos.length === 0 && (
+        <p className="text-center text-gray-500 mt-10">
+          No conversations yet 💬
+        </p>
+      )}
+
+      <div className="space-y-2">
+
+        {convos.map((c) => (
+          <div
+            key={c.id}
+            onClick={() =>
+              navigate(`/chat-room?seller=${c.otherUserId}&name=${c.name}`)
+            }
+            className="flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:bg-gray-50 transition"
+          >
+
+            {/* 🖼️ AVATAR */}
+            {c.avatar ? (
+              <img
+                src={c.avatar}
+                className="w-12 h-12 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center text-sm">
+                {c.name.charAt(0)}
+              </div>
+            )}
+
+            {/* 💬 TEXT */}
+            <div className="flex-1">
+              <div className="flex justify-between items-center">
+
+                <p className="font-semibold">
+                  {c.name}
+                </p>
+
+                <span className="text-xs text-gray-400">
+                  {c.lastTime
+                    ? new Date(c.lastTime).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : ""}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center mt-1">
+
+                <p className="text-sm text-gray-500 truncate max-w-[180px]">
+                  {c.lastMessage || "Start chatting..."}
+                </p>
+
+                {c.unreadCount > 0 && (
+                  <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">
+                    {c.unreadCount}
+                  </span>
+                )}
+              </div>
+            </div>
+
+          </div>
+        ))}
+
+      </div>
+
+    </div>
   );
-}
-
-// ✅ MARK AS READ
-export async function markAsRead(conversationId: string, userId: string) {
-  await supabase
-    .from("messages")
-    .update({ is_read: true })
-    .eq("conversation_id", conversationId)
-    .neq("sender_id", userId);
-}
-
-// 📥 GET USER CONVERSATIONS (INBOX)
-export async function getUserConversations(userId: string) {
-  const { data: convos } = await supabase
-    .from("conversations")
-    .select("*");
-
-  if (!convos) return [];
-
-  const myConvos = convos.filter(
-    (c) => c.user1_id === userId || c.user2_id === userId
-  );
-
-  const results = [];
-
-  for (const convo of myConvos) {
-    const otherUserId =
-      convo.user1_id === userId ? convo.user2_id : convo.user1_id;
-
-    // 🔥 LAST MESSAGE
-    const { data: messages } = await supabase
-      .from("messages")
-      .select("*")
-      .eq("conversation_id", convo.id)
-      .order("created_at", { ascending: false })
-      .limit(1);
-
-    // 🔥 UNREAD COUNT
-    const { data: unread } = await supabase
-      .from("messages")
-      .select("*")
-      .eq("conversation_id", convo.id)
-      .eq("is_read", false)
-      .neq("sender_id", userId);
-
-    results.push({
-      ...convo,
-      otherUserId,
-      lastMessage: messages?.[0]?.content || "",
-      lastTime: messages?.[0]?.created_at || "",
-      unreadCount: unread?.length || 0,
-    });
-  }
-
-  return results;
 }
