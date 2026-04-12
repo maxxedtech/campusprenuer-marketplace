@@ -18,6 +18,7 @@ import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/NotFound";
 import CartPage from "@/pages/CartPage";
 import ProductViewPage from "@/pages/ProductViewPage";
+import ProfilePage from "@/pages/ProfilePage";
 
 import EntrepreneurDashboard from "@/components/dashboard/EntrepreneurDashboard";
 import DashboardHome from "@/components/dashboard/entrepreneur/DashboardHome";
@@ -76,6 +77,15 @@ export default function App() {
               <ProductViewPage />
             </ProtectedRoute>
           }
+        />
+
+        <Route
+  path="/profile"
+  element={
+    <ProtectedRoute>
+      <ProfilePage />
+    </ProtectedRoute>
+  }
         />
 
         <Route
