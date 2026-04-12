@@ -35,6 +35,7 @@ export async function sendMessage(
       sender_id: senderId,
       content,
       is_read: false,
+      deleted: false, // ✅ ensure exists
     },
   ]);
 }
@@ -57,6 +58,7 @@ export async function sendImage(
       sender_id: senderId,
       image_url: data.publicUrl,
       is_read: false,
+      deleted: false,
     },
   ]);
 }
@@ -79,8 +81,22 @@ export async function sendAudio(
       sender_id: senderId,
       audio_url: data.publicUrl,
       is_read: false,
+      deleted: false,
     },
   ]);
+}
+
+/* ================= DELETE MESSAGE ================= */
+export async function deleteMessage(messageId: string) {
+  await supabase
+    .from("messages")
+    .update({
+      deleted: true,
+      content: "This message was deleted",
+      image_url: null,
+      audio_url: null,
+    })
+    .eq("id", messageId);
 }
 
 /* ================= UNREAD ================= */
@@ -89,17 +105,22 @@ export async function getUnreadCount(userId: string) {
 
   return (
     data?.filter(
-      (m) => m.sender_id !== userId && m.is_read === false
+      (m) =>
+        m.sender_id !== userId &&
+        m.is_read === false &&
+        !m.deleted // ✅ ignore deleted
     ).length || 0
   );
 }
 
+/* ================= MARK READ ================= */
 export async function markAsRead(conversationId: string, userId: string) {
   await supabase
     .from("messages")
     .update({ is_read: true })
     .eq("conversation_id", conversationId)
-    .neq("sender_id", userId);
+    .neq("sender_id", userId)
+    .eq("deleted", false); // ✅ only real messages
 }
 
 /* ================= INBOX ================= */
@@ -138,14 +159,17 @@ export async function getUserConversations(userId: string) {
       .select("*")
       .eq("conversation_id", convo.id)
       .eq("is_read", false)
-      .neq("sender_id", userId);
+      .neq("sender_id", userId)
+      .eq("deleted", false);
 
     results.push({
       ...convo,
       otherUserId,
       name: userData?.name || "User",
       avatar: userData?.avatar_url || "",
-      lastMessage: messages?.[0]?.content || "",
+      lastMessage: messages?.[0]?.deleted
+        ? "Message deleted"
+        : messages?.[0]?.content || "",
       lastTime: messages?.[0]?.created_at || "",
       unreadCount: unread?.length || 0,
     });
