@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { readAuth } from "@/lib/authStorage";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Index() {
-  const { user, token } = readAuth();
-  const isLoggedIn = Boolean(token && user);
+  const { user, isAuthed } = useAuth();
+
+  const isLoggedIn = isAuthed;
 
   return (
     <div className="min-h-[calc(100vh-5rem)]">
