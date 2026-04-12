@@ -8,25 +8,21 @@ import { supabase } from "@/supabase";
 export default function InboxPage() {
   const navigate = useNavigate();
 
-  const [user, setUser] = useState<any>(null);
   const [convos, setConvos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 🔥 LOAD CONVERSATIONS
   useEffect(() => {
     const load = async () => {
-      const current = await getCurrentUser();
-      setUser(current);
+      const user = await getCurrentUser();
+      if (!user) return;
 
-      if (!current) return;
-
-      const data = await getUserConversations(current.id);
+      const data = await getUserConversations(user.id);
       setConvos(data || []);
       setLoading(false);
 
-      // 🔥 REAL-TIME UPDATE (NEW MESSAGES)
+      // 🔥 REAL-TIME UPDATE
       const channel = supabase
-        .channel("inbox-realtime")
+        .channel("inbox-ui")
         .on(
           "postgres_changes",
           {
@@ -35,7 +31,7 @@ export default function InboxPage() {
             table: "messages",
           },
           async () => {
-            const updated = await getUserConversations(current.id);
+            const updated = await getUserConversations(user.id);
             setConvos(updated || []);
           }
         )
@@ -49,9 +45,7 @@ export default function InboxPage() {
     load();
   }, []);
 
-  if (loading) {
-    return <div className="p-6">Loading messages...</div>;
-  }
+  if (loading) return <div className="p-6">Loading...</div>;
 
   return (
     <div className="max-w-2xl mx-auto p-4">
@@ -59,55 +53,69 @@ export default function InboxPage() {
       <h1 className="text-2xl font-bold mb-4">Messages</h1>
 
       {convos.length === 0 && (
-        <div className="text-gray-500 text-center mt-10">
+        <p className="text-center text-gray-500 mt-10">
           No conversations yet 💬
-        </div>
+        </p>
       )}
 
       <div className="space-y-2">
+
         {convos.map((c) => (
           <div
             key={c.id}
             onClick={() =>
-              navigate(`/chat-room?seller=${c.otherUserId}`)
+              navigate(`/chat-room?seller=${c.otherUserId}&name=${c.name}`)
             }
-            className="flex items-center justify-between border rounded-xl p-3 cursor-pointer hover:bg-gray-50 transition"
+            className="flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:bg-gray-50 transition"
           >
 
-            {/* LEFT SIDE */}
-            <div className="flex flex-col">
-              <p className="font-semibold">
-                User {c.otherUserId?.slice(0, 6)}
-              </p>
+            {/* 🖼️ AVATAR */}
+            {c.avatar ? (
+              <img
+                src={c.avatar}
+                className="w-12 h-12 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center text-sm">
+                {c.name.charAt(0)}
+              </div>
+            )}
 
-              <p className="text-sm text-gray-500 truncate max-w-xs">
-                {c.lastMessage || "Start a conversation"}
-              </p>
-            </div>
+            {/* 💬 TEXT */}
+            <div className="flex-1">
+              <div className="flex justify-between items-center">
 
-            {/* RIGHT SIDE */}
-            <div className="flex flex-col items-end gap-1">
+                <p className="font-semibold">
+                  {c.name}
+                </p>
 
-              {/* TIME */}
-              <span className="text-xs text-gray-400">
-                {c.lastTime
-                  ? new Date(c.lastTime).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
-                  : ""}
-              </span>
-
-              {/* 🔴 UNREAD BADGE */}
-              {c.unreadCount > 0 && (
-                <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-                  {c.unreadCount}
+                <span className="text-xs text-gray-400">
+                  {c.lastTime
+                    ? new Date(c.lastTime).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : ""}
                 </span>
-              )}
+              </div>
+
+              <div className="flex justify-between items-center mt-1">
+
+                <p className="text-sm text-gray-500 truncate max-w-[180px]">
+                  {c.lastMessage || "Start chatting..."}
+                </p>
+
+                {c.unreadCount > 0 && (
+                  <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">
+                    {c.unreadCount}
+                  </span>
+                )}
+              </div>
             </div>
 
           </div>
         ))}
+
       </div>
 
     </div>
