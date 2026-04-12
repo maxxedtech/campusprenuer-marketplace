@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getCurrentUser } from "@/lib/auth";
-import { getOrCreateConversation, sendMessage } from "@/lib/chat";
+import {
+  getOrCreateConversation,
+  sendMessage,
+  markAsRead,
+} from "@/lib/chat";
 import { supabase } from "@/supabase";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export default function ChatPage() {
   const [params] = useSearchParams();
@@ -39,6 +44,9 @@ export default function ChatPage() {
 
       setMessages(data || []);
 
+      // ✅ MARK AS READ
+      await markAsRead(convo.id, current.id);
+
       // 🔥 REAL-TIME CHANNEL
       const channel = supabase.channel(`chat-${convo.id}`);
 
@@ -53,19 +61,23 @@ export default function ChatPage() {
         },
         (payload) => {
           setMessages((prev) => [...prev, payload.new]);
+
+          // 🔔 NOTIFICATION
+          if (payload.new.sender_id !== current.id) {
+            toast("New message 💬");
+          }
         }
       );
 
-      // ✨ TYPING INDICATOR
+      // ✨ TYPING
       channel.on("broadcast", { event: "typing" }, (payload) => {
         if (payload.payload.userId !== current.id) {
           setIsTyping(true);
-
           setTimeout(() => setIsTyping(false), 1500);
         }
       });
 
-      // 🟢 ONLINE PRESENCE
+      // 🟢 ONLINE
       channel.on("presence", { event: "sync" }, () => {
         const state = channel.presenceState();
 
@@ -92,7 +104,6 @@ export default function ChatPage() {
     load();
   }, [sellerId]);
 
-  // 💬 SEND MESSAGE
   const handleSend = async () => {
     if (!text.trim() || !conversation || !user) return;
 
@@ -100,7 +111,6 @@ export default function ChatPage() {
     setText("");
   };
 
-  // ✨ SEND TYPING EVENT
   const handleTyping = async (value: string) => {
     setText(value);
 
@@ -120,7 +130,6 @@ export default function ChatPage() {
   return (
     <div className="p-4 max-w-2xl mx-auto">
 
-      {/* HEADER */}
       <div className="flex items-center gap-2 mb-2">
         <h1 className="text-xl font-bold">
           Chat with {sellerName}
@@ -135,14 +144,12 @@ export default function ChatPage() {
         </span>
       </div>
 
-      {/* TYPING */}
       {isTyping && (
         <p className="text-sm text-gray-500 mb-2">
           {sellerName} is typing...
         </p>
       )}
 
-      {/* MESSAGES */}
       <div className="border h-96 overflow-y-auto p-3 space-y-2 mb-3">
         {messages.map((m) => (
           <div
@@ -158,7 +165,6 @@ export default function ChatPage() {
         ))}
       </div>
 
-      {/* INPUT */}
       <div className="flex gap-2">
         <Input
           value={text}
