@@ -42,9 +42,7 @@ export default function Navbar() {
 
     load();
 
-    // 🔁 auto refresh unread every 5s
     const interval = setInterval(load, 5000);
-
     return () => clearInterval(interval);
   }, []);
 
@@ -54,6 +52,8 @@ export default function Navbar() {
   const displayName = useMemo(() => {
     return user?.name?.split(" ")[0] || "Account";
   }, [user]);
+
+  const avatar = user?.avatar_url;
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -83,7 +83,7 @@ export default function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b bg-white/80 backdrop-blur">
       <nav className="container mx-auto flex h-16 items-center justify-between px-4">
 
         {/* LOGO */}
@@ -93,28 +93,31 @@ export default function Navbar() {
         </Link>
 
         {/* DESKTOP */}
-        <div className="hidden md:flex items-center gap-4">
+        <div className="hidden md:flex items-center gap-5">
 
           <Link
             to="/marketplace"
-            className={isActive("/marketplace") ? "font-bold" : ""}
+            className={`transition ${
+              isActive("/marketplace") ? "font-semibold" : "text-gray-600"
+            }`}
           >
             Marketplace
           </Link>
 
           {isLoggedIn && (
             <>
-              {/* 🔥 CHAT ICON WITH BADGE */}
+              {/* 💬 CHAT */}
               <Link to="/chat" className="relative">
                 <MessageCircle />
 
                 {unread > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-1 rounded-full">
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] px-1.5 rounded-full shadow">
                     {unread}
                   </span>
                 )}
               </Link>
 
+              {/* 🛒 CART */}
               {role === "customer" && (
                 <Link to="/cart">
                   <ShoppingCart />
@@ -123,6 +126,7 @@ export default function Navbar() {
             </>
           )}
 
+          {/* AUTH */}
           {!isLoggedIn ? (
             <>
               <Button variant="ghost" onClick={handleLoginClick}>
@@ -135,20 +139,44 @@ export default function Navbar() {
             </>
           ) : (
             <div className="relative">
+
+              {/* PROFILE BUTTON */}
               <button
                 onClick={() => setProfileOpen(!profileOpen)}
-                className="font-medium"
+                className="flex items-center gap-2"
               >
-                {displayName}
+                {/* 🖼️ AVATAR */}
+                {avatar ? (
+                  <img
+                    src={avatar}
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-sm">
+                    {displayName.charAt(0)}
+                  </div>
+                )}
+
+                <span className="text-sm font-medium">
+                  {displayName}
+                </span>
               </button>
 
+              {/* DROPDOWN */}
               {profileOpen && (
                 <div className="absolute right-0 mt-2 w-56 bg-white border rounded-xl shadow-lg p-2 space-y-1">
 
+                  <button
+                    onClick={() => navigate("/profile")}
+                    className="w-full text-left px-2 py-1 hover:bg-gray-100 rounded"
+                  >
+                    Profile
+                  </button>
+
                   {role === "entrepreneur" && (
                     <button
-                      className="w-full text-left px-2 py-1 hover:bg-gray-100 rounded"
                       onClick={() => navigate("/dashboard/entrepreneur")}
+                      className="w-full text-left px-2 py-1 hover:bg-gray-100 rounded"
                     >
                       Dashboard
                     </button>
@@ -156,16 +184,16 @@ export default function Navbar() {
 
                   {role === "admin" && (
                     <button
-                      className="w-full text-left px-2 py-1 hover:bg-gray-100 rounded"
                       onClick={() => navigate("/admin")}
+                      className="w-full text-left px-2 py-1 hover:bg-gray-100 rounded"
                     >
                       Admin Panel
                     </button>
                   )}
 
                   <button
-                    className="w-full text-left px-2 py-1 hover:bg-red-100 text-red-600 rounded flex items-center gap-1"
                     onClick={handleLogout}
+                    className="w-full text-left px-2 py-1 hover:bg-red-100 text-red-600 rounded flex items-center gap-2"
                   >
                     <LogOut size={16} />
                     Logout
@@ -187,7 +215,7 @@ export default function Navbar() {
 
       {/* MOBILE MENU */}
       {mobileOpen && (
-        <div className="md:hidden px-4 pb-4 space-y-3 border-t">
+        <div className="md:hidden px-4 pb-4 space-y-3 border-t bg-white">
 
           <Link to="/marketplace">Marketplace</Link>
 
@@ -196,7 +224,7 @@ export default function Navbar() {
               <Link to="/chat" className="flex items-center gap-2">
                 Chat
                 {unread > 0 && (
-                  <span className="bg-red-500 text-white text-xs px-2 rounded">
+                  <span className="bg-red-500 text-white text-xs px-2 rounded-full">
                     {unread}
                   </span>
                 )}
@@ -222,9 +250,19 @@ export default function Navbar() {
               </Button>
             </>
           ) : (
-            <Button onClick={handleLogout} className="w-full">
-              Logout
-            </Button>
+            <>
+              <Button
+                onClick={() => navigate("/profile")}
+                className="w-full"
+                variant="outline"
+              >
+                Profile
+              </Button>
+
+              <Button onClick={handleLogout} className="w-full">
+                Logout
+              </Button>
+            </>
           )}
         </div>
       )}
