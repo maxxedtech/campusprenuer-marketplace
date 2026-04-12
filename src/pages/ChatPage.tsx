@@ -1,15 +1,18 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+
+import { supabase } from "@/supabase";
 import { getCurrentUser } from "@/lib/auth";
 import {
   getOrCreateConversation,
   sendMessage,
+  sendImage,
+  sendAudio,
   markAsRead,
 } from "@/lib/chat";
-import { supabase } from "@/supabase";
+
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 
 export default function ChatPage() {
   const [params] = useSearchParams();
@@ -22,8 +25,8 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState("");
 
-  const [isTyping, setIsTyping] = useState(false);
-  const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
+  const [recording, setRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<any>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -35,7 +38,6 @@ export default function ChatPage() {
       const convo = await getOrCreateConversation(current.id, sellerId);
       setConversation(convo);
 
-      // 🔥 Load messages
       const { data } = await supabase
         .from("messages")
         .select("*")
@@ -44,137 +46,152 @@ export default function ChatPage() {
 
       setMessages(data || []);
 
-      // ✅ MARK AS READ
       await markAsRead(convo.id, current.id);
 
-      // 🔥 REAL-TIME CHANNEL
-      const channel = supabase.channel(`chat-${convo.id}`);
-
-      // 💬 NEW MESSAGES
-      channel.on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter: `conversation_id=eq.${convo.id}`,
-        },
-        (payload) => {
-          setMessages((prev) => [...prev, payload.new]);
-
-          // 🔔 NOTIFICATION
-          if (payload.new.sender_id !== current.id) {
-            toast("New message 💬");
+      const channel = supabase
+        .channel(`chat-${convo.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "messages",
+            filter: `conversation_id=eq.${convo.id}`,
+          },
+          (payload) => {
+            setMessages((prev) => [...prev, payload.new]);
           }
-        }
-      );
+        )
+        .subscribe();
 
-      // ✨ TYPING
-      channel.on("broadcast", { event: "typing" }, (payload) => {
-        if (payload.payload.userId !== current.id) {
-          setIsTyping(true);
-          setTimeout(() => setIsTyping(false), 1500);
-        }
-      });
-
-      // 🟢 ONLINE
-      channel.on("presence", { event: "sync" }, () => {
-        const state = channel.presenceState();
-
-        const users = Object.values(state)
-          .flat()
-          .map((p: any) => p.userId);
-
-        setOnlineUsers(users);
-      });
-
-      await channel.subscribe(async (status) => {
-        if (status === "SUBSCRIBED") {
-          await channel.track({
-            userId: current.id,
-          });
-        }
-      });
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
+      return () => supabase.removeChannel(channel);
     };
 
     load();
   }, [sellerId]);
 
+  /* ================= SEND ================= */
   const handleSend = async () => {
-    if (!text.trim() || !conversation || !user) return;
+    if (!text.trim()) return;
 
     await sendMessage(conversation.id, user.id, text);
     setText("");
   };
 
-  const handleTyping = async (value: string) => {
-    setText(value);
+  /* ================= IMAGE ================= */
+  const handleImage = async (e: any) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-    if (!conversation || !user) return;
-
-    const channel = supabase.channel(`chat-${conversation.id}`);
-
-    await channel.send({
-      type: "broadcast",
-      event: "typing",
-      payload: { userId: user.id },
-    });
+    await sendImage(conversation.id, user.id, file);
   };
 
-  const isOnline = onlineUsers.includes(sellerId || "");
+  /* ================= AUDIO ================= */
+  const startRecording = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    const recorder = new MediaRecorder(stream);
+    const chunks: any[] = [];
+
+    recorder.ondataavailable = (e) => chunks.push(e.data);
+
+    recorder.onstop = async () => {
+      const blob = new Blob(chunks, { type: "audio/webm" });
+      await sendAudio(conversation.id, user.id, blob);
+    };
+
+    recorder.start();
+    setMediaRecorder(recorder);
+    setRecording(true);
+  };
+
+  const stopRecording = () => {
+    mediaRecorder.stop();
+    setRecording(false);
+  };
 
   return (
-    <div className="p-4 max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto p-4 flex flex-col h-[90vh]">
 
-      <div className="flex items-center gap-2 mb-2">
-        <h1 className="text-xl font-bold">
-          Chat with {sellerName}
-        </h1>
+      {/* HEADER */}
+      <h1 className="text-lg font-bold mb-2">
+        {sellerName || "Chat"}
+      </h1>
 
-        <span
-          className={`text-xs px-2 py-1 rounded ${
-            isOnline ? "bg-green-500 text-white" : "bg-gray-300"
-          }`}
-        >
-          {isOnline ? "Online" : "Offline"}
-        </span>
+      {/* MESSAGES */}
+      <div className="flex-1 overflow-y-auto space-y-3 border p-3 rounded-xl bg-white">
+
+        {messages.map((m) => {
+          const isMe = m.sender_id === user?.id;
+
+          return (
+            <div
+              key={m.id}
+              className={`flex items-end gap-2 ${
+                isMe ? "justify-end" : "justify-start"
+              }`}
+            >
+              {!isMe && (
+                <img
+                  src="/default-avatar.png"
+                  className="w-8 h-8 rounded-full"
+                />
+              )}
+
+              <div
+                className={`px-3 py-2 rounded-2xl max-w-xs text-sm shadow ${
+                  isMe
+                    ? "bg-blue-500 text-white"
+                    : "bg-gray-200"
+                }`}
+              >
+                {m.content && <p>{m.content}</p>}
+
+                {m.image_url && (
+                  <img
+                    src={m.image_url}
+                    className="rounded mt-1 max-w-[200px]"
+                  />
+                )}
+
+                {m.audio_url && (
+                  <audio controls className="mt-1">
+                    <source src={m.audio_url} />
+                  </audio>
+                )}
+              </div>
+
+              {isMe && (
+                <img
+                  src={user?.avatar_url || "/default-avatar.png"}
+                  className="w-8 h-8 rounded-full"
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      {isTyping && (
-        <p className="text-sm text-gray-500 mb-2">
-          {sellerName} is typing...
-        </p>
-      )}
+      {/* INPUT */}
+      <div className="flex items-center gap-2 mt-3">
 
-      <div className="border h-96 overflow-y-auto p-3 space-y-2 mb-3">
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            className={`p-2 rounded max-w-xs ${
-              m.sender_id === user?.id
-                ? "ml-auto bg-blue-500 text-white"
-                : "bg-gray-200"
-            }`}
-          >
-            {m.content}
-          </div>
-        ))}
-      </div>
+        <input type="file" onChange={handleImage} />
 
-      <div className="flex gap-2">
         <Input
           value={text}
-          onChange={(e) => handleTyping(e.target.value)}
+          onChange={(e) => setText(e.target.value)}
           placeholder="Type message..."
         />
 
-        <Button onClick={handleSend}>
-          Send
-        </Button>
+        <Button onClick={handleSend}>Send</Button>
+
+        {!recording ? (
+          <Button onClick={startRecording}>🎤</Button>
+        ) : (
+          <Button onClick={stopRecording} className="bg-red-500">
+            Stop
+          </Button>
+        )}
       </div>
 
     </div>
