@@ -28,7 +28,7 @@ export async function getOrCreateConversation(userId: string, otherId: string) {
   return convo;
 }
 
-// 💬 SEND MESSAGE (UPDATED WITH is_read)
+// 💬 SEND MESSAGE
 export async function sendMessage(
   conversationId: string,
   senderId: string,
@@ -62,4 +62,50 @@ export async function markAsRead(conversationId: string, userId: string) {
     .update({ is_read: true })
     .eq("conversation_id", conversationId)
     .neq("sender_id", userId);
+}
+
+// 📥 GET USER CONVERSATIONS (INBOX)
+export async function getUserConversations(userId: string) {
+  const { data: convos } = await supabase
+    .from("conversations")
+    .select("*");
+
+  if (!convos) return [];
+
+  const myConvos = convos.filter(
+    (c) => c.user1_id === userId || c.user2_id === userId
+  );
+
+  const results = [];
+
+  for (const convo of myConvos) {
+    const otherUserId =
+      convo.user1_id === userId ? convo.user2_id : convo.user1_id;
+
+    // 🔥 LAST MESSAGE
+    const { data: messages } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("conversation_id", convo.id)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    // 🔥 UNREAD COUNT
+    const { data: unread } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("conversation_id", convo.id)
+      .eq("is_read", false)
+      .neq("sender_id", userId);
+
+    results.push({
+      ...convo,
+      otherUserId,
+      lastMessage: messages?.[0]?.content || "",
+      lastTime: messages?.[0]?.created_at || "",
+      unreadCount: unread?.length || 0,
+    });
+  }
+
+  return results;
 }
