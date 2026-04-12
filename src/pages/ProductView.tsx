@@ -1,37 +1,26 @@
-import { useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useAuth } from "@/contexts/AuthContext";
-import { addToCart } from "@/lib/cartStorage";
-import { getProducts } from "@/utils/productStorage";
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { supabase } from "@/supabase";
 
 export default function ProductView() {
   const { id } = useParams();
-  const nav = useNavigate();
-  const { user } = useAuth();
+  const [product, setProduct] = useState<any>(null);
 
-  const product = useMemo(() => {
-    return getProducts().find((p) => p.id === id);
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase
+        .from("products")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      setProduct(data);
+    };
+
+    load();
   }, [id]);
 
-  const [qty, setQty] = useState(1);
+  if (!product) return <div>Loading...</div>;
 
-  if (!product) return <div>Not found</div>;
-
-  return (
-    <div>
-      <h1>{product.name}</h1>
-
-      <Input
-        type="number"
-        value={qty}
-        onChange={(e) => setQty(Number(e.target.value))}
-      />
-
-      <Button onClick={() => addToCart(product.id, qty)}>
-        Add to cart
-      </Button>
-    </div>
-  );
+  return <h1>{product.title}</h1>;
 }
