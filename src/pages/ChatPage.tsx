@@ -17,7 +17,9 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState("");
 
-  // 🔥 LOAD INITIAL DATA
+  const [isTyping, setIsTyping] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
+
   useEffect(() => {
     const load = async () => {
       const current = await getCurrentUser();
@@ -28,7 +30,7 @@ export default function ChatPage() {
       const convo = await getOrCreateConversation(current.id, sellerId);
       setConversation(convo);
 
-      // load existing messages
+      // 🔥 Load messages
       const { data } = await supabase
         .from("messages")
         .select("*")
@@ -37,22 +39,50 @@ export default function ChatPage() {
 
       setMessages(data || []);
 
-      // 🔥 REAL-TIME SUBSCRIPTION
-      const channel = supabase
-        .channel("chat-room")
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "messages",
-            filter: `conversation_id=eq.${convo.id}`,
-          },
-          (payload) => {
-            setMessages((prev) => [...prev, payload.new]);
-          }
-        )
-        .subscribe();
+      // 🔥 REAL-TIME CHANNEL
+      const channel = supabase.channel(`chat-${convo.id}`);
+
+      // 💬 NEW MESSAGES
+      channel.on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `conversation_id=eq.${convo.id}`,
+        },
+        (payload) => {
+          setMessages((prev) => [...prev, payload.new]);
+        }
+      );
+
+      // ✨ TYPING INDICATOR
+      channel.on("broadcast", { event: "typing" }, (payload) => {
+        if (payload.payload.userId !== current.id) {
+          setIsTyping(true);
+
+          setTimeout(() => setIsTyping(false), 1500);
+        }
+      });
+
+      // 🟢 ONLINE PRESENCE
+      channel.on("presence", { event: "sync" }, () => {
+        const state = channel.presenceState();
+
+        const users = Object.values(state)
+          .flat()
+          .map((p: any) => p.userId);
+
+        setOnlineUsers(users);
+      });
+
+      await channel.subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          await channel.track({
+            userId: current.id,
+          });
+        }
+      });
 
       return () => {
         supabase.removeChannel(channel);
@@ -70,12 +100,47 @@ export default function ChatPage() {
     setText("");
   };
 
+  // ✨ SEND TYPING EVENT
+  const handleTyping = async (value: string) => {
+    setText(value);
+
+    if (!conversation || !user) return;
+
+    const channel = supabase.channel(`chat-${conversation.id}`);
+
+    await channel.send({
+      type: "broadcast",
+      event: "typing",
+      payload: { userId: user.id },
+    });
+  };
+
+  const isOnline = onlineUsers.includes(sellerId || "");
+
   return (
     <div className="p-4 max-w-2xl mx-auto">
 
-      <h1 className="text-xl font-bold mb-4">
-        Chat with {sellerName}
-      </h1>
+      {/* HEADER */}
+      <div className="flex items-center gap-2 mb-2">
+        <h1 className="text-xl font-bold">
+          Chat with {sellerName}
+        </h1>
+
+        <span
+          className={`text-xs px-2 py-1 rounded ${
+            isOnline ? "bg-green-500 text-white" : "bg-gray-300"
+          }`}
+        >
+          {isOnline ? "Online" : "Offline"}
+        </span>
+      </div>
+
+      {/* TYPING */}
+      {isTyping && (
+        <p className="text-sm text-gray-500 mb-2">
+          {sellerName} is typing...
+        </p>
+      )}
 
       {/* MESSAGES */}
       <div className="border h-96 overflow-y-auto p-3 space-y-2 mb-3">
@@ -97,7 +162,7 @@ export default function ChatPage() {
       <div className="flex gap-2">
         <Input
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => handleTyping(e.target.value)}
           placeholder="Type message..."
         />
 
