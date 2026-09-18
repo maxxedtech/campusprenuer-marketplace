@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/supabase";
+import { deleteUser } from "@/utils/userStorage";
 
 export default function Settings() {
   const nav = useNavigate();
@@ -17,9 +17,7 @@ export default function Settings() {
   const doDelete = async () => {
     setLoading(true);
 
-    // ⚠️ Supabase delete user (requires backend normally)
-    await supabase.from("users").delete().eq("id", user.id);
-
+    deleteUser(user.id);
     await logout();
     nav("/");
   };

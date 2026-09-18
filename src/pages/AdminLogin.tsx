@@ -5,10 +5,11 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Shield } from "lucide-react";
-import { loginUser } from "@/lib/auth";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function AdminLogin() {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,7 +22,7 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
-      const user = await loginUser(email, password);
+      const user = await login(email, password);
 
       // 🔐 check if user is admin
       if (user.role !== "admin") {

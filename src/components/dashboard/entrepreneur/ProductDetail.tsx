@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
-import { supabase } from "@/supabase";
+import { getProductById, getProducts } from "@/lib/products";
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -22,25 +22,13 @@ export default function ProductDetail() {
         if (!id) return;
 
         // 🔥 get product
-        const { data, error } = await supabase
-          .from("products")
-          .select("*")
-          .eq("id", id)
-          .single();
-
-        if (error || !data) throw new Error("Product not found");
+        const data = await getProductById(id);
+        if (!data) throw new Error("Product not found");
 
         setProduct(data);
 
         // 🔥 get more from same seller
-        const { data: more } = await supabase
-          .from("products")
-          .select("*")
-          .eq("owner_id", data.owner_id)
-          .neq("id", data.id)
-          .limit(4);
-
-        setRelated(more || []);
+        setRelated((await getProducts()).filter((item) => item.owner_id === data.owner_id && item.id !== data.id).slice(0, 4));
       } catch (err) {
         console.error(err);
       } finally {

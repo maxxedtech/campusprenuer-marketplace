@@ -1,52 +1,36 @@
-import { supabase } from "@/supabase";
+import {
+  createUser,
+  ensureLocalAdmin,
+  findUser,
+  getSessionUser,
+  setSessionUser,
+  type UserRecord,
+} from "@/utils/userStorage";
 
-export async function signUpUser(data: any) {
-  const { email, password } = data;
+export type SignupData = Omit<UserRecord, "id" | "createdAt">;
 
-  const { data: authData, error } = await supabase.auth.signUp({
-    email,
-    password,
-  });
-
-  if (error) throw error;
-
-  await supabase.from("users").insert([
-    {
-      id: authData.user?.id,
-      ...data,
-      created_at: new Date(),
-    },
-  ]);
-
-  return authData.user;
+export async function signUpUser(data: SignupData) {
+  ensureLocalAdmin();
+  if (!data.name.trim()) throw new Error("Please enter your name.");
+  if (data.password.length < 6) throw new Error("Password must be at least 6 characters.");
+  const user = createUser({ ...data, email: data.email.trim().toLowerCase() });
+  setSessionUser(user);
+  return user;
 }
 
 export async function loginUser(email: string, password: string) {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (error) throw error;
-
-  const { data: userData } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", data.user.id)
-    .single();
-
-  return userData;
+  ensureLocalAdmin();
+  const user = findUser(email.trim(), password);
+  if (!user) throw new Error("Invalid email or password.");
+  setSessionUser(user);
+  return user;
 }
 
 export async function getCurrentUser() {
-  const { data } = await supabase.auth.getUser();
-  if (!data.user) return null;
+  ensureLocalAdmin();
+  return getSessionUser();
+}
 
-  const { data: userData } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", data.user.id)
-    .single();
-
-  return userData;
+export async function logoutUser() {
+  setSessionUser(null);
 }

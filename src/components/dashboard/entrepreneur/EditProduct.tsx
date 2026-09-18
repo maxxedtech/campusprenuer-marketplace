@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 
 import { getCurrentUser } from "@/lib/auth";
 import { updateProduct } from "@/lib/products";
-import { supabase } from "@/supabase";
+import { getProductById } from "@/lib/products";
 
 export default function EditProduct() {
   const { id } = useParams();
@@ -36,13 +36,8 @@ export default function EditProduct() {
         const user = await getCurrentUser();
         if (!user) throw new Error("Not logged in");
 
-        const { data, error } = await supabase
-          .from("products")
-          .select("*")
-          .eq("id", id)
-          .single();
-
-        if (error || !data) throw new Error("Product not found");
+        const data = await getProductById(id);
+        if (!data) throw new Error("Product not found");
 
         if (data.owner_id !== user.id) {
           throw new Error("You cannot edit this product");

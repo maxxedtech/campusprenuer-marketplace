@@ -3,7 +3,7 @@
 import { Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { getCurrentUser } from "@/lib/auth";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Role = "entrepreneur" | "customer" | "admin";
 
@@ -14,18 +14,8 @@ export default function ProtectedRoute({
   children: ReactNode;
   allow?: Role[];
 }) {
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
-
-  useEffect(() => {
-    const checkUser = async () => {
-      const currentUser = await getCurrentUser();
-      setUser(currentUser);
-      setLoading(false);
-    };
-
-    checkUser();
-  }, []);
+  const { user } = useAuth();
+  const loading = false;
 
   // 🔄 Loading state (prevents flicker)
   if (loading) {

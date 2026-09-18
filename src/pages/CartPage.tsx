@@ -1,32 +1,10 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { readCart, removeFromCart, setQty } from "@/lib/cartStorage";
+import { getProductById } from "@/lib/products";
+import { placeOrderFromCart } from "@/lib/ordersStorage";
+import type { LocalProduct } from "@/types/local";
+import { toast } from "sonner";
 
-export default function CartPage() {
-  const [items, setItems] = useState<any[]>([]);
-
-  // 🔥 TEMP: empty cart (until backend cart is added)
-  useEffect(() => {
-    setItems([]);
-  }, []);
-
-  return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">Cart</h1>
-
-      {items.length === 0 ? (
-        <p className="text-gray-500">Your cart is empty</p>
-      ) : (
-        <div className="space-y-4">
-          {items.map((item, i) => (
-            <div key={i} className="border p-4 rounded">
-              <p>{item.name}</p>
-              <p>₦{item.price}</p>
-            </div>
-          ))}
-
-          <Button className="mt-4">Checkout</Button>
-        </div>
-      )}
-    </div>
-  );
-}
+type CartLine = { product: LocalProduct; qty: number };
+export default function CartPage() { const [lines, setLines] = useState<CartLine[]>([]); const load = async () => { const next: CartLine[] = []; for (const item of readCart()) { const product = await getProductById(item.productId); if (product) next.push({ product, qty: item.qty }); } setLines(next); }; useEffect(() => { load(); window.addEventListener("campus-cart-change", load); return () => window.removeEventListener("campus-cart-change", load); }, []); const total = lines.reduce((sum, line) => sum + line.product.price * line.qty, 0); const checkout = async () => { try { await placeOrderFromCart(); toast.success("Order placed successfully"); await load(); } catch (error) { toast.error(error instanceof Error ? error.message : "Checkout failed"); } }; return <div className="max-w-4xl mx-auto p-6"><h1 className="text-2xl font-bold mb-6">Cart</h1>{!lines.length ? <p className="text-gray-500">Your cart is empty</p> : <div className="space-y-4">{lines.map(({ product, qty }) => <div key={product.id} className="flex items-center gap-4 border p-4 rounded">{product.image_url && <img src={product.image_url} className="w-20 h-20 object-cover rounded" />}<div className="flex-1"><p className="font-semibold">{product.title}</p><p>₦{product.price.toLocaleString()}</p></div><input type="number" min="1" value={qty} onChange={(event) => setQty(product.id, Number(event.target.value))} className="w-16 border rounded p-1" /><Button variant="outline" onClick={() => removeFromCart(product.id)}>Remove</Button></div>)}<div className="flex items-center justify-between border-t pt-4"><p className="text-xl font-bold">Total: ₦{total.toLocaleString()}</p><Button onClick={checkout}>Checkout</Button></div></div>}</div>; }

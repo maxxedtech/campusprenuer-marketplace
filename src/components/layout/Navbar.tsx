@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Menu,
@@ -11,36 +11,30 @@ import {
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth";
 import { getUnreadCount } from "@/lib/chat";
-import { supabase } from "@/supabase";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth();
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
-  const [user, setUser] = useState<any>(null);
   const [unread, setUnread] = useState(0);
-
-  const loginClickCount = useRef(0);
-  const loginClickTimer = useRef<any>(null);
 
   useEffect(() => {
     const load = async () => {
-      const u = await getCurrentUser();
-      setUser(u);
-
-      if (u) {
-        const count = await getUnreadCount(u.id);
+      if (user) {
+        const count = getUnreadCount(user.id);
         setUnread(count);
-      }
+      } else setUnread(0);
     };
 
     load();
     const interval = setInterval(load, 4000);
     return () => clearInterval(interval);
-  }, []);
+  }, [user]);
 
   const displayName = useMemo(() => {
     return user?.name?.split(" ")[0] || "Account";
@@ -51,7 +45,7 @@ export default function Navbar() {
   const isActive = (path: string) => location.pathname === path;
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await logout();
     navigate("/login");
   };
 

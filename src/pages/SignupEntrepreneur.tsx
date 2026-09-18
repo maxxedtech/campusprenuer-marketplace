@@ -4,10 +4,11 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { signUpUser } from "@/lib/auth";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function SignupEntrepreneur() {
   const navigate = useNavigate();
+  const { signup } = useAuth();
 
   const [name, setName] = useState("");
   const [businessName, setBusinessName] = useState("");
@@ -26,7 +27,7 @@ export default function SignupEntrepreneur() {
     setLoading(true);
 
     try {
-      await signUpUser({
+      await signup({
         name,
         email,
         password,

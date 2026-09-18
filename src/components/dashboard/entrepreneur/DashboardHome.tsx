@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/supabase";
+import { getMyProducts } from "@/lib/products";
 
 export default function DashboardHome() {
   const { user } = useAuth();
@@ -14,12 +14,7 @@ export default function DashboardHome() {
 
       setLoading(true);
 
-      const { data } = await supabase
-        .from("products")
-        .select("*")
-        .eq("owner_id", user.id);
-
-      setProducts(data || []);
+      setProducts(await getMyProducts());
       setLoading(false);
     };
 
