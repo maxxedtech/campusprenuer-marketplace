@@ -1,48 +1,30 @@
-// src/components/dashboard/entrepreneur/AddProduct.tsx
-
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, X } from "lucide-react";
+import { CheckCircle2, ArrowLeft, PackagePlus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { addProduct } from "@/lib/products";
 import { getCurrentUser } from "@/lib/auth";
+import ImageUploader from "@/components/common/ImageUploader";
+import { toast } from "sonner";
 
-async function fileToResizedDataUrl(file: File, maxSize = 900, quality = 0.75) {
-  const dataUrl: string = await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-
-  const img: HTMLImageElement = await new Promise((resolve, reject) => {
-    const i = new Image();
-    i.onload = () => resolve(i);
-    i.onerror = reject;
-    i.src = dataUrl;
-  });
-
-  const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
-  const w = Math.round(img.width * scale);
-  const h = Math.round(img.height * scale);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return dataUrl;
-
-  ctx.drawImage(img, 0, 0, w, h);
-  return canvas.toDataURL("image/jpeg", quality);
-}
+const CATEGORIES = [
+  "Tech & Gadgets",
+  "Fashion & Thrift",
+  "Food & Treats",
+  "Services & Design",
+  "Books & Academics",
+  "Beauty & Grooming",
+  "Campus Essentials",
+  "General",
+];
 
 export default function AddProduct() {
   const navigate = useNavigate();
 
-  const [name, setName] = useState("");
+  const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
+  const [category, setCategory] = useState("Fashion & Thrift");
   const [description, setDescription] = useState("");
   const [images, setImages] = useState<string[]>([]);
 
@@ -50,50 +32,37 @@ export default function AddProduct() {
   const [error, setError] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
 
-  const previewImages = useMemo(() => images, [images]);
-
-  const handlePickImages = async (files: FileList | null) => {
-    if (!files) return;
-
-    const processed: string[] = [];
-
-    for (const file of Array.from(files)) {
-      const resized = await fileToResizedDataUrl(file);
-      processed.push(resized);
-    }
-
-    setImages((prev) => [...prev, ...processed]);
-  };
-
-  const removeImageAt = (index: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
     setError("");
+
+    if (!title.trim()) {
+      setError("Please enter a product title.");
+      return;
+    }
+    if (!price || Number(price) <= 0) {
+      setError("Please enter a valid price in Naira.");
+      return;
+    }
+
+    setSaving(true);
 
     try {
       const user = await getCurrentUser();
-
       if (!user || user.role !== "entrepreneur") {
         throw new Error("Only entrepreneurs can add products");
       }
 
       await addProduct({
-        title: name,
+        title: title.trim(),
         price: Number(price),
-        description,
+        category,
+        description: description.trim(),
         image_url: images[0] || "",
       });
 
       setShowSuccess(true);
-
-      setName("");
-      setPrice("");
-      setDescription("");
-      setImages([]);
+      toast.success("Product listed on marketplace! 🚀");
     } catch (err: any) {
       setError(err.message || "Failed to add product");
     } finally {
@@ -102,49 +71,158 @@ export default function AddProduct() {
   };
 
   return (
-    <>
+    <div className="max-w-3xl space-y-6">
+      {/* HEADER */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate(-1)}
+            className="rounded-full"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-extrabold text-brand-navy">
+              Add New Product / Service
+            </h1>
+            <p className="text-xs text-muted-foreground">
+              Create a listing visible to all students across campus.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* SUCCESS MODAL */}
       {showSuccess && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/40">
-          <div className="bg-white p-6 rounded-xl text-center">
-            <CheckCircle2 className="mx-auto mb-2 text-green-600" />
-            <h2 className="font-bold">Product added successfully</h2>
-            <Button onClick={() => navigate("/dashboard/entrepreneur/products")}>
-              View Products
-            </Button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-navy/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center space-y-4 shadow-2xl animate-in zoom-in-95">
+            <div className="w-16 h-16 rounded-full bg-green-100 text-green-600 mx-auto flex items-center justify-center">
+              <CheckCircle2 className="w-8 h-8" />
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-xl font-bold text-brand-navy">
+                Product Published!
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Your item is now live and students can browse, chat, or add to cart.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 pt-2">
+              <Button
+                onClick={() => navigate("/dashboard/entrepreneur/products")}
+                className="bg-brand-navy hover:bg-brand-navy/90 text-white rounded-2xl h-11"
+              >
+                View My Inventory
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowSuccess(false);
+                  setTitle("");
+                  setPrice("");
+                  setDescription("");
+                  setImages([]);
+                }}
+                className="rounded-2xl h-11"
+              >
+                Add Another Item
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4 p-4 bg-white rounded-xl">
-        {error && <div className="text-red-500">{error}</div>}
+      {/* FORM */}
+      <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-6 sm:p-8 border border-border shadow-sm space-y-6">
+        {error && (
+          <div className="p-4 rounded-2xl bg-red-50 text-red-600 text-sm font-medium border border-red-200">
+            {error}
+          </div>
+        )}
 
-        <Input placeholder="Product name" value={name} onChange={(e)=>setName(e.target.value)} />
-        <Input placeholder="Price" value={price} onChange={(e)=>setPrice(e.target.value)} />
-
-        <Input type="file" multiple onChange={(e)=>handlePickImages(e.target.files)} />
-
-        <div className="grid grid-cols-3 gap-2">
-          {previewImages.map((img, i) => (
-            <div key={i} className="relative">
-              <img src={img} className="h-24 w-full object-cover" />
-              <button type="button" onClick={()=>removeImageAt(i)}>
-                <X />
-              </button>
-            </div>
-          ))}
-        </div>
-
-        <textarea
-          placeholder="Description"
-          value={description}
-          onChange={(e)=>setDescription(e.target.value)}
-          className="w-full border p-2"
+        {/* IMAGE UPLOADER */}
+        <ImageUploader
+          images={images}
+          onChange={setImages}
+          multiple={true}
+          maxImages={4}
+          label="Product Photos"
+          helperText="Upload crisp photos of your product or service artwork (first photo is the cover)"
         />
 
-        <Button disabled={saving}>
-          {saving ? "Saving..." : "Add Product"}
-        </Button>
+        {/* TITLE & PRICE */}
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5 sm:col-span-2">
+            <label className="text-xs font-bold text-gray-700">Product Title</label>
+            <Input
+              placeholder="e.g. Vintage Oversized Denim Jacket"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="h-11 rounded-xl"
+              required
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-gray-700">Price (₦ Naira)</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-gray-500 text-sm">
+                ₦
+              </span>
+              <Input
+                type="number"
+                min="0"
+                step="50"
+                placeholder="5,000"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                className="pl-8 h-11 rounded-xl font-semibold"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-gray-700">Category</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full h-11 rounded-xl border border-input bg-background px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-navy/30"
+            >
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* DESCRIPTION */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold text-gray-700">Description &amp; Specifications</label>
+          <textarea
+            placeholder="Describe the condition, available sizes/colors, location for pickup, warranty or turnaround time..."
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={4}
+            className="w-full rounded-2xl border border-input p-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy/30"
+          />
+        </div>
+
+        {/* SUBMIT BUTTON */}
+        <div className="pt-2 flex justify-end">
+          <Button
+            type="submit"
+            disabled={saving}
+            className="w-full sm:w-auto min-w-[200px] h-12 bg-brand-orange hover:bg-brand-orange/90 text-white font-bold rounded-2xl shadow-md shadow-brand-orange/25"
+          >
+            {saving ? "Publishing..." : "Publish Product (₦)"}
+          </Button>
+        </div>
       </form>
-    </>
+    </div>
   );
 }

@@ -14,10 +14,12 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ["Quicksand", "sans-serif"],
-        body: ["Nunito", "sans-serif"],
+        display: ["Poppins", "sans-serif"],
+        body: ["Poppins", "sans-serif"],
       },
       colors: {
+        "brand-navy": "#1E2D4E",
+        "brand-orange": "#F5A623",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

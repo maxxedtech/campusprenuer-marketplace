@@ -1,5 +1,3 @@
-// src/pages/SignupCustomer.tsx
-
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -34,8 +32,8 @@ export default function SignupCustomer() {
       setSuccess(true);
 
       setTimeout(() => {
-        navigate("/marketplace");
-      }, 1500);
+        navigate("/");
+      }, 1200);
     } catch (err: any) {
       setError(err.message || "Signup failed");
     } finally {

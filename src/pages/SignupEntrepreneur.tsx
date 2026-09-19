@@ -1,5 +1,3 @@
-// src/pages/SignupEntrepreneur.tsx
-
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -40,8 +38,8 @@ export default function SignupEntrepreneur() {
       setSuccess(true);
 
       setTimeout(() => {
-        navigate("/dashboard/entrepreneur");
-      }, 1500);
+        navigate("/");
+      }, 1200);
     } catch (err: any) {
       setError(err.message || "Signup failed");
     } finally {
@@ -97,7 +95,7 @@ export default function SignupEntrepreneur() {
           />
 
           <Input
-            placeholder="Address / Location"
+            placeholder="Address / Location / Area"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             required
