@@ -47,7 +47,7 @@ export default function Login() {
           {/* HEADER */}
           <div className="text-center space-y-1.5">
             <div className="w-12 h-12 rounded-full bg-brand-navy text-white flex items-center justify-center mx-auto mb-3 shadow-md">
-              <img src="/logo-icon.png" alt="" className="w-7 h-7 object-contain rounded-full"
+              <img src="/logo-icon.png" alt="" className="w-7 h-7 object-contain rounded-full"/>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-brand-navy">
               Welcome Back
