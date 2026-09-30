@@ -1,176 +1,319 @@
-import { useState, useRef, useEffect } from "react";
-import { Send, ArrowLeft, Phone, MoreVertical, Circle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  Store,
+  Sparkles,
+  ArrowRight,
+  MessageCircle,
+  ShieldCheck,
+  Zap,
+  TrendingUp,
+  ShoppingBag,
+  Laptop,
+  Shirt,
+  Utensils,
+  BookOpen,
+  Scissors,
+  CheckCircle2,
+  Users,
+  LayoutDashboard,
+  User as UserIcon,
+  PlusCircle,
+  MapPin,
+  HelpCircle,
+  Eye,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { ChatMessage, Conversation } from "@/lib/chatStorage";
+import { useAuth } from "@/contexts/AuthContext";
+import { getProductsSync } from "@/lib/products";
+import type { LocalProduct } from "@/types/local";
 
-interface ChatWindowProps {
-  conversation: Conversation;
-  messages: ChatMessage[];
-  currentUserId: string;
-  currentUserName: string;
-  otherName: string;
-  onSend: (content: string) => void;
-  onBack: () => void;
-}
+export default function Index() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [recentProducts, setRecentProducts] = useState<LocalProduct[]>([]);
 
-const ChatWindow = ({ 
-  conversation, 
-  messages, 
-  currentUserId, 
-  currentUserName,
-  otherName,
-  onSend, 
-  onBack 
-}: ChatWindowProps) => {
-  const [input, setInput] = useState("");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Auto-scroll to bottom
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    try {
+      const items = getProductsSync();
+      setRecentProducts(items.slice(0, 6));
+    } catch {
+      setRecentProducts([]);
+    }
+  }, []);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-    onSend(input.trim());
-    setInput("");
-  };
+  const categories = [
+    { name: "Tech & Gadgets", icon: Laptop, color: "bg-blue-500/10 text-blue-600" },
+    { name: "Fashion & Thrift", icon: Shirt, color: "bg-orange-500/10 text-brand-orange" },
+    { name: "Food & Treats", icon: Utensils, color: "bg-green-500/10 text-green-600" },
+    { name: "Services & Design", icon: Zap, color: "bg-purple-500/10 text-purple-600" },
+    { name: "Books & Academics", icon: BookOpen, color: "bg-amber-500/10 text-amber-600" },
+    { name: "Beauty & Grooming", icon: Scissors, color: "bg-pink-500/10 text-pink-600" },
+  ];
 
-  const formatTime = (timestamp: number) => {
-    return new Date(timestamp).toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: true 
-    });
-  };
+  // ----------------------------------------------------
+  // LOGGED-IN VIEW: FANCY CAMPUS HUB & DASHBOARD EXPLORER
+  // ----------------------------------------------------
+  if (user) {
+    return (
+      <div className="min-h-screen bg-muted/20 pb-20">
+        {/* TOP WELCOME HERO BANNER */}
+        <section className="bg-brand-navy text-white pt-10 pb-16 px-4 relative overflow-hidden">
+          <div className="absolute -right-20 -top-20 w-80 h-80 bg-brand-orange/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="max-w-6xl mx-auto relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded-full bg-brand-orange text-white text-xs font-bold uppercase tracking-wider">
+                  Campus Member
+                </span>
+                {user.verification_status === "verified" ? (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-green-500/20 text-green-300 text-xs font-bold border border-green-400/30">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    Verified Trader
+                  </span>
+                ) : (
+                  <Link
+                    to="/profile"
+                    className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/5 text-white text-xs font-bold border border-white/10 hover:bg-white/10 transition"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-brand-orange" />
+                    Complete your profile
+                  </Link>
+                )}
+              </div>
 
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
+              <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">
+                Welcome, {user.name}! 👋
+              </h1>
+              <p className="text-base sm:text-lg text-slate-200 max-w-2xl">
+                Your campus marketplace hub is ready. Explore peer listings, message student businesses, and manage your orders.
+              </p>
+            </div>
 
-    if (date.toDateString() === today.toDateString()) return "Today";
-    if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
-    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-  };
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                asChild
+                variant="outline"
+                className="border-white/40 text-white hover:bg-white/10 font-bold rounded-2xl h-11 px-5"
+              >
+                <Link to="/marketplace" className="flex items-center gap-2">
+                  <Store className="w-4 h-4" />
+                  Explore Market
+                </Link>
+              </Button>
 
-  // Group messages by date
-  const groupedMessages = messages.reduce((groups: any, msg) => {
-    const date = formatDate(msg.timestamp);
-    if (!groups[date]) groups[date] = [];
-    groups[date].push(msg);
-    return groups;
-  }, {});
+              {user.role === "entrepreneur" ? (
+                <Button
+                  asChild
+                  variant="outline"
+                  className="border-white/40 text-white hover:bg-white/10 font-bold rounded-2xl h-11 px-5"
+                >
+                  <Link to="/dashboard/entrepreneur" className="flex items-center gap-2">
+                    <LayoutDashboard className="w-4 h-4 text-brand-orange" />
+                    Seller Dashboard
+                  </Link>
+                </Button>
+              ) : (
+                <Button
+                  asChild
+                  variant="outline"
+                  className="border-white/40 text-white hover:bg-white/10 font-bold rounded-2xl h-11 px-5"
+                >
+                  <Link to="/profile" className="flex items-center gap-2">
+                    <UserIcon className="w-4 h-4" />
+                    Edit Profile
+                  </Link>
+                </Button>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* HUB SHORTCUT CARDS */}
+        <div className="max-w-6xl mx-auto px-4 -mt-8 relative z-20">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Link
+              to="/marketplace"
+              className="bg-white p-5 rounded-3xl border border-border/80 shadow-md hover:shadow-lg hover:border-brand-orange/50 transition-all flex flex-col justify-between group"
+            >
+              <div className="w-10 h-10 rounded-2xl bg-orange-100 text-brand-orange flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <Store className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-brand-navy">Campus Market</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Browse student products</p>
+              </div>
+            </Link>
+
+            <Link
+              to="/chat"
+              className="bg-white p-5 rounded-3xl border border-border/80 shadow-md hover:shadow-lg hover:border-brand-orange/50 transition-all flex flex-col justify-between group"
+            >
+              <div className="w-10 h-10 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <MessageCircle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-brand-navy">Live Chat</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Talk to campus sellers</p>
+              </div>
+            </Link>
+
+            {user.role === "entrepreneur" ? (
+              <Link
+                to="/dashboard/entrepreneur/add"
+                className="bg-white p-5 rounded-3xl border border-border/80 shadow-md hover:shadow-lg hover:border-brand-orange/50 transition-all flex flex-col justify-between group"
+              >
+                <div className="w-10 h-10 rounded-2xl bg-green-100 text-green-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <PlusCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-brand-navy">Add Listing</h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Launch a new product</p>
+                </div>
+              </Link>
+            ) : (
+              <Link
+                to="/profile"
+                className="bg-white p-5 rounded-3xl border border-border/80 shadow-md hover:shadow-lg hover:border-brand-orange/50 transition-all flex flex-col justify-between group"
+              >
+                <div className="w-10 h-10 rounded-2xl bg-green-100 text-green-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-brand-navy">Verification</h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Complete seller setup</p>
+                </div>
+              </Link>
+            )}
+
+            <Link
+              to="/profile"
+              className="bg-white p-5 rounded-3xl border border-border/80 shadow-md hover:shadow-lg hover:border-brand-orange/50 transition-all flex flex-col justify-between group"
+            >
+              <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <Users className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-brand-navy">Profile</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Edit details & track status</p>
+              </div>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex-1 flex flex-col bg-[#e5ddd5]">
-      {/* WhatsApp-style Header */}
-      <div className="bg-[#075e54] text-white px-4 py-3 flex items-center gap-3">
-        <button onClick={onBack} className="md:hidden p-2 -ml-2 hover:bg-white/10 rounded-full">
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center font-bold text-lg">
-          {otherName[0]?.toUpperCase()}
-        </div>
-        
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold truncate">{otherName}</p>
-          <div className="flex items-center gap-1 text-xs text-green-400">
-            <Circle className="w-2 h-2 fill-current" />
-            <span>online</span>
-          </div>
-        </div>
+    <div className="min-h-screen flex flex-col bg-white overflow-hidden">
+      {/* HERO SECTION */}
+      <section className="relative px-4 pt-12 pb-20 md:pt-20 md:pb-28 max-w-7xl mx-auto w-full">
+        <div className="absolute top-10 left-1/2 -translate-x-1/2 w-96 h-96 bg-brand-orange/10 rounded-full blur-3xl pointer-events-none -z-10" />
+        <div className="absolute top-40 right-10 w-72 h-72 bg-brand-navy/5 rounded-full blur-3xl pointer-events-none -z-10" />
 
-        <button className="p-2 hover:bg-white/10 rounded-full">
-          <Phone className="w-5 h-5" />
-        </button>
-        <button className="p-2 hover:bg-white/10 rounded-full">
-          <MoreVertical className="w-5 h-5" />
-        </button>
-      </div>
+        <div className="grid lg:grid-cols-12 gap-12 items-center">
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6 }}
+            className="lg:col-span-7 text-center lg:text-left space-y-6"
+          >
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-brand-navy leading-[1.15]">
+              Empower Student Hustles. <span className="text-brand-orange block sm:inline">Trade On Campus.</span>
+            </h1>
 
-      {/* Messages - WhatsApp style */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
-        {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="bg-[#dcf8c6] px-4 py-3 rounded-lg shadow-sm max-w-xs">
-              <p className="text-sm text-gray-700">
-                Start chatting with <b>{otherName}</b>
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Messages are stored locally on this device
-              </p>
+            <p className="text-lg sm:text-2xl font-bold text-gray-700 tracking-wide max-w-2xl mx-auto lg:mx-0">
+              Trade Connect and Grow
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
+              <Button asChild size="lg" className="bg-brand-orange hover:bg-brand-orange/90 text-white font-bold rounded-2xl shadow-md shadow-brand-orange/25 px-7">
+                <Link to="/get-started" className="flex items-center gap-2">
+                  Get Started <ArrowRight className="w-4 h-4" />
+                </Link>
+              </Button>
+
+              <Button asChild variant="outline" size="lg" className="border-brand-navy text-brand-navy hover:bg-muted rounded-2xl px-7">
+                <Link to="/marketplace" className="flex items-center gap-2">
+                  <Store className="w-4 h-4" /> Browse Marketplace
+                </Link>
+              </Button>
             </div>
-          </div>
-        ) : (
-          Object.entries(groupedMessages).map(([date, msgs]: [string, any]) => (
-            <div key={date} className="space-y-1">
-              {/* Date separator */}
-              <div className="flex justify-center my-4">
-                <span className="bg-[#e1f2fb] text-xs text-gray-600 px-3 py-1 rounded-full">
-                  {date}
-                </span>
-              </div>
-              
-              {msgs.map((msg: ChatMessage) => {
-                const isOwn = msg.senderId === currentUserId;
-                return (
-                  <div key={msg.id} className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
-                    <div
-                      className={`max-w-[75%] px-3 py-2 rounded-lg shadow-sm relative ${
-                        isOwn
-                          ? "bg-[#dcf8c6] text-gray-800 rounded-tr-none"
-                          : "bg-white text-gray-800 rounded-tl-none"
-                      }`}
-                    >
-                      {!isOwn && (
-                        <p className="text-xs text-orange-600 font-medium mb-0.5">
-                          {msg.senderName}
-                        </p>
-                      )}
-                      <p className="text-sm leading-relaxed">{msg.content}</p>
-                      <div className="flex items-center justify-end gap-1 mt-0.5">
-                        <span className="text-[10px] text-gray-500">
-                          {formatTime(msg.timestamp)}
-                        </span>
-                        {isOwn && (
-                          <span className="text-blue-500">✓✓</span>
-                        )}
-                      </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6 }}
+            className="lg:col-span-5"
+          >
+            <div className="bg-white border border-border shadow-soft-xl rounded-[2rem] p-4 sm:p-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-10 h-10 rounded-xl bg-brand-orange text-white flex items-center justify-center font-bold">
+                      <Store className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-[0.18em]">Campus Market</p>
+                      <h3 className="font-black text-brand-navy text-lg">Student Buzz</h3>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          ))
-        )}
-        <div ref={messagesEndRef} />
-      </div>
+                  <span className="text-xs font-bold px-2 py-1 rounded-full bg-green-100 text-green-700">Live</span>
+                </div>
 
-      {/* WhatsApp-style Input */}
-      <div className="bg-[#f0f0f0] p-3">
-        <div className="flex items-end gap-2 bg-white rounded-full px-4 py-2 shadow-sm">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-            placeholder="Type a message"
-            className="flex-1 bg-transparent outline-none text-sm py-2"
-          />
-          <Button 
-            size="sm" 
-            className={`rounded-full px-4 ${input.trim() ? 'bg-[#075e54] hover:bg-[#064c44]' : 'bg-gray-300'}`}
-            onClick={handleSend}
-            disabled={!input.trim()}
-          >
-            <Send className="w-4 h-4" />
-          </Button>
+                <div className="grid grid-cols-2 gap-3">
+                  {recentProducts.length > 0 ? (
+                    recentProducts.map((p) => (
+                      <Link key={p.id} to={`/product/${p.id}`} className="group block rounded-2xl border border-border/80 bg-muted/30 p-2 hover:border-brand-orange/40 transition-all">
+                        <div className="h-24 rounded-xl overflow-hidden bg-white mb-2">
+                          {p.image_url ? (
+                            <img src={p.image_url} alt={p.title} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-300">
+                              <Store className="w-6 h-6" />
+                            </div>
+                          )}
+                        </div>
+                        <h4 className="text-xs font-bold text-brand-navy line-clamp-1">{p.title}</h4>
+                        <p className="text-[11px] text-brand-orange font-black mt-1">₦{Number(p.price).toLocaleString()}</p>
+                      </Link>
+                    ))
+                  ) : (
+                    <>
+                      <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-4 text-center">
+                        <Store className="w-6 h-6 mx-auto text-gray-400" />
+                        <p className="text-xs text-gray-500 mt-2">No listings yet</p>
+                      </div>
+                      <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-4 text-center">
+                        <MessageCircle className="w-6 h-6 mx-auto text-gray-400" />
+                        <p className="text-xs text-gray-500 mt-2">Chat live</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </motion.div>
         </div>
-      </div>
+      </section>
+
+      <section className="max-w-6xl mx-auto px-4 pb-24">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {categories.map(({ name, icon: Icon, color }) => (
+            <div key={name} className="bg-white border border-border rounded-2xl p-4 shadow-sm flex items-center gap-3">
+              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${color}`}>
+                <Icon className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-brand-navy text-sm">{name}</h3>
+                <p className="text-[11px] text-muted-foreground">Campus trusted</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
-};
-
-export default ChatWindow;
+}

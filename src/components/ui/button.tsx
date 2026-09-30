@@ -1,48 +1,111 @@
-import * as React from "react";
-import { Slot } from "@radix-ui/react-slot";
-import { cva, type VariantProps } from "class-variance-authority";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-import { cn } from "@/lib/utils";
+@layer base {
+  :root {
+    --background: 210 33% 98%;
+    --foreground: 220 44% 14%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 44% 14%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 44% 14%;
+    --primary: 38 91% 54%;
+    --primary-foreground: 220 44% 10%;
+    --secondary: 220 18% 96%;
+    --secondary-foreground: 220 44% 14%;
+    --muted: 220 18% 95%;
+    --muted-foreground: 220 14% 45%;
+    --accent: 38 91% 54%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 20% 90%;
+    --input: 220 20% 90%;
+    --ring: 38 91% 54%;
+    --radius: 1rem;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --sidebar-background: 220 44% 21%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 38 91% 54%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 40% 30%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 220 40% 30%;
+    --sidebar-ring: 38 91% 54%;
+  }
 
-const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
-  {
-    variants: {
-      variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-soft",
-        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline: "border border-input bg-background hover:bg-muted hover:text-foreground",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-muted hover:text-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
-        hero: "gradient-primary text-primary-foreground shadow-soft-lg hover:shadow-glow",
-      },
-      size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-md px-8",
-        icon: "h-10 w-10",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
-  },
-);
-
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
-  asChild?: boolean;
+  .dark {
+    --background: 220 44% 10%;
+    --foreground: 0 0% 98%;
+    --card: 220 44% 13%;
+    --card-foreground: 0 0% 98%;
+    --popover: 220 44% 13%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 38 91% 54%;
+    --primary-foreground: 220 44% 10%;
+    --secondary: 220 30% 20%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 220 30% 18%;
+    --muted-foreground: 220 15% 65%;
+    --accent: 38 91% 54%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 30% 20%;
+    --input: 220 30% 20%;
+    --ring: 38 91% 54%;
+    --sidebar-background: 220 44% 8%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 38 91% 54%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 40% 18%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 220 40% 18%;
+    --sidebar-ring: 38 91% 54%;
+  }
 }
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button";
-    return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
-  },
-);
-Button.displayName = "Button";
+@layer base {
+  * {
+    @apply border-border;
+  }
 
-export { Button, buttonVariants };
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display font-bold;
+  }
+}
+
+@layer components {
+  .card-soft {
+    @apply bg-card rounded-2xl shadow-soft border border-border/50 p-6;
+  }
+
+  .gradient-hero {
+    background: hsl(220 44% 21% / 0.06);
+  }
+
+  .gradient-primary {
+    background: hsl(220 44% 21%);
+  }
+
+  .text-brand-orange {
+    color: hsl(38 91% 54%);
+  }
+
+  .bg-brand-navy {
+    background-color: hsl(220 44% 21%);
+  }
+
+  .bg-brand-orange {
+    background-color: hsl(38 91% 54%);
+  }
+}

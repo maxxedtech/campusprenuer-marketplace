@@ -1,111 +1,48 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+import * as React from "react";
+import { Slot } from "@radix-ui/react-slot";
+import { cva, type VariantProps } from "class-variance-authority";
 
-export default function Login() {
-  const navigate = useNavigate();
-  const { login } = useAuth();
+import { cn } from "@/lib/utils";
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+const buttonVariants = cva(
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-soft",
+        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        outline: "border border-input bg-background hover:bg-muted hover:text-foreground",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        ghost: "hover:bg-muted hover:text-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
+        hero: "bg-primary text-primary-foreground shadow-soft-lg hover:shadow-glow",
+      },
+      size: {
+        default: "h-10 px-4 py-2",
+        sm: "h-9 rounded-md px-3",
+        lg: "h-11 rounded-md px-8",
+        icon: "h-10 w-10",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  },
+);
 
-  const handleLogin = async () => {
-    if (!email.trim() || !password) {
-      toast.error("Please enter both email and password");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const user = await login(email.trim(), password);
-      toast.success(`Welcome back, ${user.name}! 👋`);
-
-      if (user.role === "admin") {
-        navigate("/admin");
-      } else {
-        // Direct buyers and sellers straight to the personalized details/hub page
-        navigate("/");
-      }
-    } catch (err: any) {
-      toast.error(err.message || "Invalid email or password.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-orange-50/40 px-4 py-12">
-      <div className="w-full max-w-md space-y-6">
-        
-        {/* LOGIN CARD */}
-        <div className="bg-white rounded-3xl shadow-xl border border-border p-6 sm:p-8 space-y-6">
-          {/* HEADER */}
-          <div className="text-center space-y-1.5">
-            <div className="w-12 h-12 rounded-full bg-brand-navy text-white flex items-center justify-center mx-auto mb-3 shadow-md">
-              <img src="/logo-icon.png" alt="" className="w-7 h-7 object-contain rounded-full"/>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-brand-navy">
-              Welcome Back
-            </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              Sign in to your buyer, seller, or administrator account.
-            </p>
-          </div>
-
-          {/* FORM */}
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-gray-700">Email Address</label>
-              <Input
-                placeholder="name@example.com"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="h-11 rounded-xl"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-gray-700">Password</label>
-                <Link to="/forgot-password" className="text-xs text-brand-orange hover:underline">
-                  Forgot password?
-                </Link>
-              </div>
-              <Input
-                placeholder="••••••••"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-                className="h-11 rounded-xl"
-              />
-            </div>
-
-            <Button
-              onClick={handleLogin}
-              className="w-full h-12 text-base font-bold bg-brand-orange hover:bg-brand-orange/90 text-white rounded-2xl shadow-md shadow-brand-orange/25 transition-all active:scale-95"
-              disabled={loading}
-            >
-              {loading ? "Signing in..." : "Login to Campuspreneur"}
-            </Button>
-          </div>
-
-          {/* SIGN UP LINKS */}
-          <div className="text-center text-xs text-muted-foreground pt-2 border-t border-border">
-            Don't have an account yet?{" "}
-            <Link to="/get-started" className="font-bold text-brand-navy hover:underline">
-              Create an account
-            </Link>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  );
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean;
 }
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : "button";
+    return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
+  },
+);
+Button.displayName = "Button";
+
+export { Button, buttonVariants };
