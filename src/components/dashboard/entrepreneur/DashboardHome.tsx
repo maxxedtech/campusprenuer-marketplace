@@ -81,7 +81,7 @@ export default function DashboardHome() {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-brand-navy">
-              Welcome, {user?.name}! 👋
+              Welcome, {user?.name}
             </h1>
             {user?.verification_status === "verified" && (
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-bold">
@@ -169,7 +169,7 @@ export default function DashboardHome() {
           <div className="flex items-center justify-between border-b border-border/60 pb-4">
             <div>
               <h2 className="text-lg font-bold text-brand-navy">
-                Top Performing Products 🔥
+                Top Performing Products
               </h2>
               <p className="text-xs text-muted-foreground">
                 Products attracting the most views and buyers on campus.
