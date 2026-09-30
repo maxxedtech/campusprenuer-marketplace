@@ -266,8 +266,6 @@ export default function ProfilePage() {
 
         {/* PROFILE HEADER CARD */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-border flex flex-col sm:flex-row items-center sm:items-start gap-6 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-brand-orange/10 to-brand-navy/5 rounded-full blur-2xl pointer-events-none" />
-
           {/* Avatar with Modern Camera Plus Button */}
           <div className="relative group">
             <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl overflow-hidden border-4 border-white shadow-md bg-brand-navy flex items-center justify-center text-white text-3xl font-bold">
@@ -277,7 +275,7 @@ export default function ProfilePage() {
                 <span>{user.name?.[0]?.toUpperCase() || "U"}</span>
               )}
             </div>
-            <label className="absolute -bottom-2 -right-2 p-2.5 rounded-2xl bg-brand-orange text-white shadow-lg cursor-pointer hover:bg-brand-orange/90 hover:scale-110 active:scale-95 transition-all">
+            <label className="absolute -bottom-2 -right-2 p-2.5 rounded-2xl bg-brand-orange text-white shadow-lg cursor-pointer hover:bg-brand-orange/90 hover:scale-110 active:scale-95 transition">
               <Camera className="w-4 h-4" />
               <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
             </label>
@@ -334,7 +332,7 @@ export default function ProfilePage() {
 
         {/* VERIFICATION BANNER */}
         {vStatus === "unverified" && (
-          <div className="bg-gradient-to-r from-orange-50 to-amber-50 border border-brand-orange/30 rounded-3xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="bg-orange-50 border border-brand-orange/30 rounded-3xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-start gap-3.5">
               <div className="p-3 rounded-2xl bg-brand-orange/20 text-brand-orange shrink-0">
                 <Award className="w-6 h-6" />
