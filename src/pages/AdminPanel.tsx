@@ -1,162 +1,21 @@
-import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Phone, MoreVertical, Circle } from "lucide-react";
-import { type ChatMessage } from "@/types/chat";
+import { useEffect, useMemo, useState } from "react";
+import { CheckCircle2, Clock3, Package, RefreshCw, Search, ShieldCheck, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useAuth } from "@/contexts/AuthContext";
+import { getUsers, updateUser, type UserRecord } from "@/utils/userStorage";
+import { getProductsSync, updateProduct } from "@/lib/products";
+import { readOrders } from "@/lib/ordersStorage";
+import type { LocalProduct } from "@/types/local";
 
-type ChatWindowProps = {
-  otherName: string;
-  otherId: string;
-  currentUserId: string;
-  messages: ChatMessage[];
-  onBack: () => void;
-  onSend: (content: string) => void;
-};
-
-export default function ChatWindow({
-  otherName,
-  otherId,
-  currentUserId,
-  messages,
-  onBack,
-  onSend,
-}: ChatWindowProps) {
-  const [input, setInput] = useState("");
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  const formatTime = (timestamp: number) => {
-    return new Date(timestamp).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
-  };
-
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    if (date.toDateString() === today.toDateString()) return "Today";
-    if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
-    return date.toLocaleDateString([], { month: "short", day: "numeric" });
-  };
-
-  const groupedMessages = messages.reduce((groups: any, msg) => {
-    const date = formatDate(msg.timestamp);
-    if (!groups[date]) groups[date] = [];
-    groups[date].push(msg);
-    return groups;
-  }, {});
-
-  return (
-    <div className="flex-1 flex flex-col bg-[#e5ddd5]">
-      {/* WhatsApp-style Header */}
-      <div className="bg-[#075e54] text-white px-4 py-3 flex items-center gap-3">
-        <button onClick={onBack} className="md:hidden p-2 -ml-2 hover:bg-white/10 rounded-full">
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-
-        <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center font-bold text-lg">
-          {otherName[0]?.toUpperCase()}
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold truncate">{otherName}</p>
-          <div className="flex items-center gap-1 text-xs text-green-400">
-            <Circle className="w-2 h-2 fill-current" />
-            <span>online</span>
-          </div>
-        </div>
-
-        <button className="p-2 hover:bg-white/10 rounded-full">
-          <Phone className="w-5 h-5" />
-        </button>
-        <button className="p-2 hover:bg-white/10 rounded-full">
-          <MoreVertical className="w-5 h-5" />
-        </button>
-      </div>
-
-      {/* Messages - WhatsApp style */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
-        {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="bg-[#dcf8c6] px-4 py-3 rounded-lg shadow-sm max-w-xs">
-              <p className="text-sm text-gray-700">
-                Start chatting with <b>{otherName}</b>
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Messages are stored locally on this device
-              </p>
-            </div>
-          </div>
-        ) : (
-          Object.entries(groupedMessages).map(([date, msgs]: [string, any]) => (
-            <div key={date} className="space-y-1">
-              {/* Date separator */}
-              <div className="flex justify-center my-4">
-                <span className="bg-[#e1f2fb] text-xs text-gray-600 px-3 py-1 rounded-full">
-                  {date}
-                </span>
-              </div>
-
-              {msgs.map((msg: ChatMessage) => {
-                const isOwn = msg.senderId === currentUserId;
-                return (
-                  <div key={msg.id} className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
-                    <div
-                      className={`max-w-[75%] px-3 py-2 rounded-lg shadow-sm relative ${
-                        isOwn
-                          ? "bg-[#dcf8c6] text-gray-800 rounded-tr-none"
-                          : "bg-white text-gray-800 rounded-tl-none"
-                      }`}
-                    >
-                      {!isOwn && (
-                        <p className="text-xs text-orange-600 font-medium mb-0.5">
-                          {msg.senderName}
-                        </p>
-                      )}
-                      <p className="text-sm leading-relaxed">{msg.content}</p>
-                      <div className="flex items-center justify-end gap-1 mt-0.5">
-                        <span className="text-[10px] text-gray-500">
-                          {formatTime(msg.timestamp)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ))
-        )}
-
-        <div ref={messagesEndRef} />
-      </div>
-
-      <div className="border-t border-gray-200 bg-white p-3">
-        <div className="flex items-center gap-2">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && input.trim() && onSend(input.trim())}
-            placeholder="Type a message..."
-            className="flex-1 border border-gray-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-200"
-          />
-          <button
-            onClick={() => {
-              if (!input.trim()) return;
-              onSend(input.trim());
-              setInput("");
-            }}
-            className="bg-brand-orange text-white rounded-full px-4 py-2 text-sm font-semibold"
-          >
-            Send
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+type Tab = "users" | "products";
+export default function AdminPanel() {
+  const { user } = useAuth(); const [tab, setTab] = useState<Tab>("users"); const [users, setUsers] = useState<UserRecord[]>([]); const [products, setProducts] = useState<LocalProduct[]>([]); const [search, setSearch] = useState("");
+  const load = () => { setUsers(getUsers()); setProducts(getProductsSync()); };
+  useEffect(() => { load(); }, []);
+  const pendingUsers = users.filter(item => item.verification_status === "pending"); const pendingProducts = products.filter(item => !item.is_approved);
+  const filteredUsers = useMemo(() => users.filter(item => `${item.name} ${item.email} ${item.business_name || ""}`.toLowerCase().includes(search.toLowerCase())), [users, search]);
+  const filteredProducts = useMemo(() => products.filter(item => `${item.title} ${item.owner_name || ""}`.toLowerCase().includes(search.toLowerCase())), [products, search]);
+  if (!user || user.role !== "admin") return null;
+  return <div className="page-shell py-8 sm:py-12"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="eyebrow">Restricted workspace</p><h1 className="mt-2 text-3xl font-bold text-brand-navy">Admin control panel</h1><p className="mt-2 text-sm text-muted-foreground">Review members and marketplace listings using the existing local data store.</p></div><Button variant="outline" onClick={load}><RefreshCw /> Refresh data</Button></div><div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[{ label: "Total users", value: users.length, icon: Users }, { label: "Pending verification", value: pendingUsers.length, icon: Clock3 }, { label: "Listings", value: products.length, icon: Package }, { label: "Recorded orders", value: readOrders().length, icon: ShieldCheck }].map(({ label, value, icon: Icon }) => <div key={label} className="surface-card p-5"><div className="flex items-center justify-between text-muted-foreground"><span className="text-xs font-bold uppercase tracking-wide">{label}</span><Icon className="h-4 w-4 text-brand-orange" /></div><p className="mt-3 font-display text-3xl font-semibold text-brand-navy">{value}</p></div>)}</div><div className="mt-8 flex flex-col gap-4 border-b border-border pb-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex gap-2"><Button variant={tab === "users" ? "default" : "outline"} onClick={() => setTab("users")}>Users</Button><Button variant={tab === "products" ? "default" : "outline"} onClick={() => setTab("products")}>Products</Button></div><div className="relative w-full sm:max-w-xs"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input aria-label="Search admin records" value={search} onChange={e => setSearch(e.target.value)} placeholder={tab === "users" ? "Search people or businesses" : "Search listings or sellers"} className="pl-10" /></div></div>{tab === "users" ? <section className="surface-card mt-6 overflow-hidden"><div className="overflow-x-auto"><table className="min-w-[720px] w-full text-left text-sm"><thead className="bg-muted/60 text-xs uppercase text-muted-foreground"><tr><th className="px-5 py-4">Member</th><th className="px-5 py-4">Role</th><th className="px-5 py-4">Verification</th><th className="px-5 py-4">Action</th></tr></thead><tbody>{filteredUsers.map(item => <tr key={item.id} className="border-t border-border/70"><td className="px-5 py-4"><p className="font-semibold text-brand-navy">{item.name}</p><p className="text-xs text-muted-foreground">{item.email}</p></td><td className="px-5 py-4 capitalize">{item.role}</td><td className="px-5 py-4"><span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-semibold">{item.verification_status || "unverified"}</span></td><td className="px-5 py-4">{item.verification_status === "pending" ? <div className="flex gap-2"><Button size="sm" onClick={() => { updateUser(item.id, { verification_status: "verified" }); load(); }}><CheckCircle2 /> Approve</Button><Button size="sm" variant="outline" onClick={() => { updateUser(item.id, { verification_status: "unverified" }); load(); }}>Reject</Button></div> : <span className="text-xs text-muted-foreground">No action needed</span>}</td></tr>)}</tbody></table></div>{filteredUsers.length === 0 && <p className="p-8 text-center text-sm text-muted-foreground">No members match this search.</p>}</section> : <section className="mt-6 space-y-3">{filteredProducts.map(item => <div key={item.id} className="surface-card flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex min-w-0 items-center gap-3"><div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-muted">{item.image_url && <img src={item.image_url} alt="" className="h-full w-full object-cover" />}</div><div className="min-w-0"><p className="truncate font-semibold text-brand-navy">{item.title}</p><p className="text-xs text-muted-foreground">by {item.owner_name || "Unknown seller"}</p></div></div><div className="flex items-center gap-2"><span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold">{item.is_approved ? "Approved" : "Pending"}</span>{!item.is_approved && <Button size="sm" onClick={() => { updateProduct(item.id, { is_approved: true }); load(); }}>Approve</Button>}</div></div>)}{filteredProducts.length === 0 && <div className="surface-card p-8 text-center text-sm text-muted-foreground">No listings match this search.</div>}</section>}</div>;
 }

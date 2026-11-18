@@ -11,4 +11,5 @@ export type LocalProduct = {
   views_count?: number;
   cart_add_count?: number;
   sales_count?: number;
+  is_approved?: boolean;
 };

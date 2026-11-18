@@ -1,141 +1,23 @@
-// src/pages/Marketplace.tsx
-
 import { useEffect, useMemo, useState } from "react";
-import { Search, Store } from "lucide-react";
+import { ArrowDownUp, ChevronDown, Search, SlidersHorizontal, Store, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { getProducts } from "@/lib/products";
+import type { LocalProduct } from "@/types/local";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
 
-import { getProducts } from "@/lib/products";
-import { getCurrentUser } from "@/lib/auth";
+const formatPrice = (price: number) => `₦${Number(price || 0).toLocaleString()}`;
+const categories = ["All categories", "Food & Drinks", "Fashion", "Electronics", "Beauty & Health", "Home & Living", "Professional Services", "General"];
 
-const Marketplace = () => {
-  const nav = useNavigate();
+function ProductCard({ product, onOpen }: { product: LocalProduct; onOpen: () => void }) {
+  return <motion.article layout whileHover={{ y: -3 }} transition={{ duration: .18 }} className="group surface-card overflow-hidden"><button type="button" onClick={onOpen} className="block w-full text-left"><div className="relative aspect-[4/3] overflow-hidden bg-muted"><div className="absolute left-3 top-3 z-10 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold text-brand-navy shadow-sm">{product.category || "General"}</div>{product.image_url ? <img src={product.image_url} alt={product.title} loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]" onError={e => { e.currentTarget.style.display = "none"; }} /> : <div className="flex h-full items-center justify-center text-muted-foreground"><Store className="h-8 w-8" /></div>}</div><div className="p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="line-clamp-1 font-display text-base font-semibold text-brand-navy">{product.title}</h2><p className="mt-1 text-xs text-muted-foreground">by {product.owner_name || "Campus seller"}</p></div><p className="shrink-0 font-display text-base font-bold text-brand-orange">{formatPrice(product.price)}</p></div><p className="mt-3 line-clamp-2 min-h-10 text-sm leading-5 text-muted-foreground">{product.description || "A campus listing from a student entrepreneur."}</p><div className="mt-4 flex items-center justify-between border-t border-border/70 pt-3 text-xs text-muted-foreground"><span>Message seller for details</span><span className="font-semibold text-brand-navy">View listing →</span></div></div></button></motion.article>;
+}
 
-  const [products, setProducts] = useState<any[]>([]);
-  const [search, setSearch] = useState("");
-  const [user, setUser] = useState<any>(null);
-
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const u = await getCurrentUser();
-        setUser(u);
-
-        const data = await getProducts();
-        setProducts(data || []);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    load();
-  }, []);
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-
-    return products.filter((p) => {
-      return (
-        p.title?.toLowerCase().includes(q) ||
-        p.description?.toLowerCase().includes(q) ||
-        p.owner_name?.toLowerCase().includes(q)
-      );
-    });
-  }, [products, search]);
-
-  const goToProduct = (id: string) => {
-    nav(`/product/${id}`);
-  };
-
-  const formatPrice = (price: number) =>
-    Number(price || 0).toLocaleString();
-
-  return (
-    <div className="container mx-auto px-4 py-8">
-
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row gap-3 mb-6">
-        <h1 className="text-2xl font-bold">Marketplace</h1>
-
-        <div className="relative md:ml-auto md:max-w-md w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" />
-
-          <Input
-            placeholder="Search products..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-      </div>
-
-      {/* STATUS */}
-      {loading && <p>Loading products...</p>}
-
-      {!loading && filtered.length === 0 && (
-        <div className="border rounded-xl p-10 text-center">
-          <p>No products available yet.</p>
-        </div>
-      )}
-
-      {/* PRODUCTS */}
-      <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-        {filtered.map((p) => (
-          <div
-            key={p.id}
-            className="border rounded-xl overflow-hidden cursor-pointer hover:shadow"
-            onClick={() => goToProduct(p.id)}
-          >
-
-            {/* IMAGE */}
-            {p.image_url ? (
-              <img
-                src={p.image_url}
-                className="w-full h-44 object-cover"
-              />
-            ) : (
-              <div className="h-44 flex items-center justify-center bg-gray-200">
-                <Store />
-              </div>
-            )}
-
-            {/* INFO */}
-            <div className="p-4 space-y-2">
-              <h2 className="font-bold text-lg">{p.title}</h2>
-
-              <p className="text-sm">
-                ₦{formatPrice(p.price)}
-              </p>
-
-              <p className="text-sm text-gray-500 line-clamp-2">
-                {p.description}
-              </p>
-
-              <p className="text-xs text-gray-400">
-                by {p.owner_name}
-              </p>
-
-              <Button
-                className="w-full"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  nav(`/product/${p.id}`);
-                }}
-              >
-                View Product
-              </Button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-    </div>
-  );
-};
-
-export default Marketplace;
+export default function Marketplace() {
+  const navigate = useNavigate(); const [products, setProducts] = useState<LocalProduct[]>([]); const [loading, setLoading] = useState(true); const [query, setQuery] = useState(""); const [category, setCategory] = useState("All categories"); const [sort, setSort] = useState("newest"); const [filtersOpen, setFiltersOpen] = useState(false);
+  useEffect(() => { let active = true; const load = async () => { try { const data = await getProducts(); if (active) setProducts(data || []); } finally { if (active) setLoading(false); } }; load(); const onChange = () => load(); window.addEventListener("campus-products-change", onChange); return () => { active = false; window.removeEventListener("campus-products-change", onChange); }; }, []);
+  const filtered = useMemo(() => { const normalized = query.trim().toLowerCase(); return [...products].filter(p => { const haystack = `${p.title} ${p.description} ${p.owner_name} ${p.category}`.toLowerCase(); return (!normalized || haystack.includes(normalized)) && (category === "All categories" || p.category === category); }).sort((a, b) => sort === "price-low" ? a.price - b.price : sort === "price-high" ? b.price - a.price : new Date(b.created_at).getTime() - new Date(a.created_at).getTime()); }, [products, query, category, sort]);
+  const clearFilters = () => { setQuery(""); setCategory("All categories"); setSort("newest"); };
+  return <div className="page-shell py-8 sm:py-12"><div className="flex flex-col gap-6 border-b border-border pb-8 lg:flex-row lg:items-end lg:justify-between"><div><p className="eyebrow">Discover on campus</p><h1 className="mt-2 text-3xl font-bold tracking-tight text-brand-navy sm:text-4xl">Marketplace</h1><p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">Find useful products and services from student-led businesses around you.</p></div><div className="flex items-center gap-2 text-sm text-muted-foreground"><Store className="h-4 w-4 text-brand-orange" /><span>{products.length} listing{products.length === 1 ? "" : "s"} available</span></div></div><div className="sticky top-[4.5rem] z-20 -mx-4 mt-6 border-y border-border bg-background/95 px-4 py-4 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0"><div className="flex flex-col gap-3 lg:flex-row"><div className="relative flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input aria-label="Search marketplace" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search products, sellers or categories" className="h-12 pl-10" /></div><Button type="button" variant="outline" className="lg:hidden" onClick={() => setFiltersOpen(v => !v)}><SlidersHorizontal /> Filters</Button><div className={`${filtersOpen ? "grid" : "hidden"} grid-cols-1 gap-3 sm:grid-cols-2 lg:flex lg:flex-1 lg:justify-end`}><label className="sr-only" htmlFor="marketplace-category">Category</label><div className="relative"><select id="marketplace-category" value={category} onChange={e => setCategory(e.target.value)} className="h-12 w-full appearance-none rounded-xl border border-input bg-background px-4 pr-10 text-sm font-semibold text-brand-navy lg:w-52"><option value="All categories">All categories</option>{categories.slice(1).map(item => <option key={item}>{item}</option>)}</select><ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /></div><label className="sr-only" htmlFor="marketplace-sort">Sort listings</label><div className="relative"><ArrowDownUp className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><select id="marketplace-sort" value={sort} onChange={e => setSort(e.target.value)} className="h-12 w-full appearance-none rounded-xl border border-input bg-background px-4 pl-10 text-sm font-semibold text-brand-navy lg:w-48"><option value="newest">Newest first</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option></select></div>{(query || category !== "All categories" || sort !== "newest") && <Button type="button" variant="ghost" onClick={clearFilters} className="h-12"><X /> Clear</Button>}</div></div></div>{loading ? <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"><div className="h-80 animate-pulse rounded-2xl bg-muted" /><div className="h-80 animate-pulse rounded-2xl bg-muted" /><div className="h-80 animate-pulse rounded-2xl bg-muted" /></div> : filtered.length === 0 ? <div className="surface-card mt-8 flex flex-col items-center justify-center px-6 py-16 text-center"><div className="rounded-2xl bg-orange-50 p-4 text-brand-orange"><Search className="h-7 w-7" /></div><h2 className="mt-5 font-display text-xl font-semibold text-brand-navy">{products.length ? "No listings match those filters" : "The marketplace is getting ready"}</h2><p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">{products.length ? "Try a broader search or clear your filters to see more campus listings." : "There are no products available yet. Check back soon or create a seller account to add the first listing."}</p>{products.length > 0 && <Button variant="outline" className="mt-6" onClick={clearFilters}>Clear filters</Button>}</div> : <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{filtered.map(product => <ProductCard key={product.id} product={product} onOpen={() => navigate(`/product/${product.id}`)} />)}</div>}</div>;
+}

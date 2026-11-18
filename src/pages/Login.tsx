@@ -1,48 +1,14 @@
-import * as React from "react";
-import { Slot } from "@radix-ui/react-slot";
-import { cva, type VariantProps } from "class-variance-authority";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useAuth } from "@/contexts/AuthContext";
 
-import { cn } from "@/lib/utils";
-
-const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
-  {
-    variants: {
-      variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-soft",
-        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline: "border border-input bg-background hover:bg-muted hover:text-foreground",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-muted hover:text-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
-        hero: "bg-primary text-primary-foreground shadow-soft-lg hover:shadow-glow",
-      },
-      size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-md px-8",
-        icon: "h-10 w-10",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
-  },
-);
-
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
-  asChild?: boolean;
+export default function Login() {
+  const navigate = useNavigate(); const { login } = useAuth();
+  const [email, setEmail] = useState(""); const [password, setPassword] = useState(""); const [showPassword, setShowPassword] = useState(false); const [loading, setLoading] = useState(false);
+  const handleSubmit = async (event: React.FormEvent) => { event.preventDefault(); if (!email.trim() || !password) { toast.error("Enter your email and password to continue."); return; } setLoading(true); try { const user = await login(email.trim(), password); toast.success(`Welcome back, ${user.name.split(" ")[0]}.`); navigate(user.role === "admin" ? "/admin" : "/"); } catch (error) { toast.error(error instanceof Error ? error.message : "We could not sign you in."); } finally { setLoading(false); } };
+  return <div className="page-shell flex min-h-[calc(100vh-4rem)] items-center justify-center py-12"><div className="grid w-full max-w-5xl overflow-hidden rounded-3xl border border-border bg-card shadow-soft-lg lg:grid-cols-[.9fr_1.1fr]"><div className="hidden bg-brand-navy p-10 text-white lg:flex lg:flex-col lg:justify-between"><div><img src="/logo-horizontal.png" alt="CampusPreneur" className="h-10 w-auto object-contain" /><p className="eyebrow mt-16 text-brand-orange">Welcome back</p><h1 className="mt-4 text-4xl font-bold leading-tight">Your campus commerce, in one place.</h1><p className="mt-5 max-w-sm leading-7 text-white/70">Sign in to browse, connect with sellers, or manage your student business.</p></div><p className="text-sm text-white/50">Customers, entrepreneurs and administrators</p></div><div className="p-6 sm:p-10"><div className="mx-auto max-w-md"><p className="eyebrow">Account access</p><h2 className="mt-2 font-display text-3xl font-semibold text-brand-navy">Sign in to CampusPreneur</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Use the email and password for your account.</p><form onSubmit={handleSubmit} className="mt-8 space-y-5"><div><label htmlFor="login-email" className="mb-2 block text-sm font-semibold text-brand-navy">Email address</label><div className="relative"><Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input id="login-email" type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" className="h-12 pl-10" /></div></div><div><div className="mb-2 flex items-center justify-between"><label htmlFor="login-password" className="block text-sm font-semibold text-brand-navy">Password</label><Link to="/forgot-password" className="text-xs font-semibold text-brand-orange hover:underline">Forgot password?</Link></div><div className="relative"><LockKeyhole className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input id="login-password" type={showPassword ? "text" : "password"} autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter your password" className="h-12 pl-10 pr-12" /><button type="button" aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword(v => !v)} className="absolute right-2 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-brand-navy">{showPassword ? <EyeOff /> : <Eye />}</button></div></div><Button type="submit" variant="hero" size="lg" className="h-12 w-full" disabled={loading}>{loading ? "Signing you in..." : "Sign in"}</Button></form><p className="mt-8 border-t border-border pt-6 text-center text-sm text-muted-foreground">New to CampusPreneur? <Link to="/get-started" className="font-bold text-brand-navy hover:underline">Create an account</Link></p></div></div></div></div>;
 }
-
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button";
-    return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
-  },
-);
-Button.displayName = "Button";
-
-export { Button, buttonVariants };

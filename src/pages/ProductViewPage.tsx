@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { getProductById, getProducts, incrementProductViews } from "@/lib/products";
 import { addToCart } from "@/lib/cartStorage";
-import { getUserById } from "@/utils/userStorage";
+import { getUserById, type UserRecord } from "@/utils/userStorage";
 import type { LocalProduct } from "@/types/local";
 import { toast } from "sonner";
 
@@ -21,7 +21,7 @@ export default function ProductViewPage() {
   const navigate = useNavigate();
 
   const [product, setProduct] = useState<LocalProduct | null>(null);
-  const [seller, setSeller] = useState<any>(null);
+  const [seller, setSeller] = useState<UserRecord | null>(null);
   const [related, setRelated] = useState<LocalProduct[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -47,17 +47,11 @@ export default function ProductViewPage() {
     });
   }, [id]);
 
-  if (loading) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-brand-orange border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  if (loading) return <div className="page-shell py-10"><div className="grid gap-8 lg:grid-cols-2"><div className="aspect-square animate-pulse rounded-3xl bg-muted" /><div className="space-y-4"><div className="h-8 w-2/3 animate-pulse rounded bg-muted" /><div className="h-10 w-1/3 animate-pulse rounded bg-muted" /><div className="h-32 animate-pulse rounded-2xl bg-muted" /></div></div></div>;
 
   if (!product) {
     return (
-      <div className="max-w-md mx-auto my-12 p-8 bg-white rounded-3xl border border-border text-center space-y-4">
+      <div className="surface-card mx-auto my-12 max-w-md p-8 text-center">
         <p className="text-gray-600 font-bold">This product is no longer available.</p>
         <Button onClick={() => navigate("/marketplace")} className="bg-brand-navy text-white rounded-2xl">
           Back to Marketplace
@@ -68,7 +62,7 @@ export default function ProductViewPage() {
 
   const handleAddToCart = () => {
     addToCart(product.id, 1);
-    toast.success(`"${product.title}" added to your cart! 🛒`);
+    toast.success(`"${product.title}" added to your cart.`);
   };
 
   const handleShare = () => {
@@ -85,8 +79,8 @@ export default function ProductViewPage() {
   };
 
   return (
-    <div className="min-h-screen bg-muted/20 py-8 px-4 sm:px-6">
-      <div className="max-w-5xl mx-auto space-y-8">
+    <div className="page-shell py-8 sm:py-12">
+      <div className="mx-auto max-w-6xl space-y-8">
         
         {/* TOP BAR */}
         <div className="flex items-center justify-between">
@@ -111,7 +105,7 @@ export default function ProductViewPage() {
         </div>
 
         {/* MAIN PRODUCT CARD */}
-        <div className="bg-white rounded-3xl border border-border p-6 sm:p-8 shadow-sm grid md:grid-cols-12 gap-8">
+        <div className="surface-card grid gap-8 p-5 sm:p-8 md:grid-cols-12">
           
           {/* IMAGE */}
           <div className="md:col-span-6">
@@ -120,7 +114,8 @@ export default function ProductViewPage() {
                 <img
                   src={product.image_url}
                   alt={product.title}
-                  className="w-full h-full object-cover"
+                  className="h-full w-full object-cover"
+                  onError={(event) => { event.currentTarget.style.display = "none"; }}
                 />
               ) : (
                 <Store className="w-16 h-16 text-gray-300" />
@@ -212,8 +207,8 @@ export default function ProductViewPage() {
                 </Button>
               </div>
 
-              <p className="text-[11px] text-center text-muted-foreground">
-                🔒 Safe Campus Trading • In-app Chat • Peer-to-Peer Pickup
+              <p className="flex items-center justify-center gap-2 text-center text-xs text-muted-foreground">
+                <ShieldCheck className="h-4 w-4 text-brand-orange" /> In-app chat and peer-to-peer pickup details are agreed with the seller.
               </p>
             </div>
 

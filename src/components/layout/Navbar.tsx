@@ -165,6 +165,8 @@ export default function Navbar() {
             <div className="relative">
               {/* PROFILE / ACCOUNT BUTTON */}
               <button
+                aria-label={`Open ${displayName} account menu`}
+                aria-expanded={profileOpen}
                 onClick={() => setProfileOpen(!profileOpen)}
                 className="flex items-center gap-2 p-1.5 rounded-full hover:bg-muted/80 transition-all border border-border/60"
               >
@@ -176,7 +178,7 @@ export default function Navbar() {
                   />
                 ) : (
                   <div className="w-8 h-8 rounded-full bg-brand-navy text-white flex items-center justify-center font-bold text-xs">
-                    {user.role === "admin" ? "👑" : displayName[0]?.toUpperCase()}
+                    {displayName[0]?.toUpperCase()}
                   </div>
                 )}
                 <span className="text-sm font-semibold text-brand-navy pr-1">
