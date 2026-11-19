@@ -10,7 +10,6 @@ import {
   LayoutDashboard,
   Store,
   Shield,
-  Sparkles,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -21,7 +20,7 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, profile, isVendor, isAdmin, signOut, loading } = useAuth();
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -35,7 +34,7 @@ export default function Navbar() {
 
   useEffect(() => {
     const load = async () => {
-      if (user && user.role !== "admin") {
+      if (user && !isAdmin) {
         const count = getUnreadCount(user.id);
         setUnread(count);
       } else {
@@ -46,19 +45,19 @@ export default function Navbar() {
     load();
     const interval = setInterval(load, 4000);
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, isAdmin]);
 
   const displayName = useMemo(() => {
     if (user?.role === "admin") return "Admin";
     return user?.name?.split(" ")[0] || "Account";
   }, [user]);
 
-  const avatar = user?.avatar_url;
+  const avatar = profile?.avatar_url ?? user?.avatar_url;
 
   const isActive = (path: string) => location.pathname === path;
 
   const handleLogout = async () => {
-    await logout();
+    await signOut();
     setMobileOpen(false);
     setProfileOpen(false);
     navigate("/login");
@@ -145,7 +144,7 @@ export default function Navbar() {
             </Link>
           )}
 
-          {!user ? (
+          {loading ? null : !user ? (
             <div className="flex items-center gap-3">
               <Button
                 variant="outline"

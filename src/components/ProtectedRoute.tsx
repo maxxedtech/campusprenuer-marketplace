@@ -1,7 +1,6 @@
 // src/components/ProtectedRoute.tsx
 
 import { Navigate } from "react-router-dom";
-import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -14,14 +13,13 @@ export default function ProtectedRoute({
   children: ReactNode;
   allow?: Role[];
 }) {
-  const { user } = useAuth();
-  const loading = false;
+  const { user, loading } = useAuth();
 
   // 🔄 Loading state (prevents flicker)
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <p className="text-sm">Checking authentication...</p>
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <p className="text-sm text-muted-foreground">Checking authentication...</p>
       </div>
     );
   }

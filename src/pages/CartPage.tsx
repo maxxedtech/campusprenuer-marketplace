@@ -22,7 +22,7 @@ type CartLine = { product: LocalProduct; qty: number };
 export default function CartPage() {
   const navigate = useNavigate();
   const [lines, setLines] = useState<CartLine[]>([]);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<{ hostel?: string; room_number?: string } | null>(null);
   const [checkingOut, setCheckingOut] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -53,7 +53,7 @@ export default function CartPage() {
     setCheckingOut(true);
     try {
       await placeOrderFromCart();
-      toast.success("Order placed successfully! 🎉 Seller notified.");
+      toast.success("Order request placed. The seller has been notified.");
       await load();
       navigate("/marketplace");
     } catch (error) {
@@ -81,7 +81,7 @@ export default function CartPage() {
             Shopping Cart ({lines.length})
           </h1>
           <p className="text-xs text-muted-foreground">
-            Review your selected campus items before completing order.
+            Review your items before sending an order request to sellers.
           </p>
         </div>
 
@@ -138,6 +138,8 @@ export default function CartPage() {
                   {/* Quantity controls */}
                   <div className="flex items-center gap-2">
                     <button
+                      type="button"
+                      aria-label={`Decrease quantity for ${product.title}`}
                       onClick={() => setQty(product.id, qty - 1)}
                       className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center hover:bg-gray-200"
                     >
@@ -145,6 +147,8 @@ export default function CartPage() {
                     </button>
                     <span className="text-xs font-bold w-6 text-center">{qty}</span>
                     <button
+                      type="button"
+                      aria-label={`Increase quantity for ${product.title}`}
                       onClick={() => setQty(product.id, qty + 1)}
                       className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center hover:bg-gray-200"
                     >
@@ -154,6 +158,8 @@ export default function CartPage() {
 
                   {/* Remove Button */}
                   <button
+                    type="button"
+                    aria-label={`Remove ${product.title} from cart`}
                     onClick={() => removeFromCart(product.id)}
                     className="p-2 text-gray-400 hover:text-red-500 rounded-lg transition-colors"
                     title="Remove item"
@@ -202,7 +208,7 @@ export default function CartPage() {
                   disabled={checkingOut}
                   className="w-full bg-brand-orange hover:bg-brand-orange/90 text-white font-bold h-12 rounded-2xl shadow-md shadow-brand-orange/25"
                 >
-                  {checkingOut ? "Processing..." : "Confirm & Place Order (₦)"}
+                  {checkingOut ? "Sending request..." : "Place order request"}
                 </Button>
               </div>
             </div>

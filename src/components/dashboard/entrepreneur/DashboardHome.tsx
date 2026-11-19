@@ -17,6 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getMyProducts } from "@/lib/products";
 import { ordersForSeller } from "@/lib/ordersStorage";
 import type { LocalProduct } from "@/types/local";
+import VendorStorePanel from "@/components/dashboard/entrepreneur/VendorStorePanel";
 
 export default function DashboardHome() {
   const navigate = useNavigate();
@@ -76,6 +77,7 @@ export default function DashboardHome() {
 
   return (
     <div className="space-y-8">
+      <VendorStorePanel />
       {/* HEADER WITH GREETING & VERIFICATION STATUS */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 sm:p-8 rounded-3xl border border-border shadow-sm">
         <div className="space-y-1">

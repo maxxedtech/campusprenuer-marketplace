@@ -22,10 +22,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getCurrentUser } from "@/lib/auth";
-import { updateUser, type UserRecord, type VerificationStatus } from "@/utils/userStorage";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import ImageUploader, { fileToResizedDataUrl } from "@/components/common/ImageUploader";
+import VendorVerificationPanel from "@/components/dashboard/entrepreneur/VendorVerificationPanel";
 
 const BUSINESS_CATEGORIES = [
   "Fashion & Thrift Store",
@@ -67,7 +68,8 @@ const NIGERIAN_BANKS = [
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const [user, setUser] = useState<UserRecord | null>(null);
+  const { user: authUser, profile, vendorStore, isVendor, isAdmin, refreshAccount } = useAuth();
+  const [user, setUser] = useState<typeof authUser>(authUser);
   const [saving, setSaving] = useState(false);
 
   // Section 1: Personal Details
@@ -98,40 +100,13 @@ export default function ProfilePage() {
   const [accountNumber, setAccountNumber] = useState("");
   const [accountName, setAccountName] = useState("");
 
-  const load = async () => {
-    const current = await getCurrentUser();
-    if (current) {
-      setUser(current);
-      setName(current.name || "");
-      setPhone(current.phone || "");
-      setAvatar(current.avatar_url || "");
-
-      // Address
-      setStreetAddress(current.address || current.hostel || "");
-      setCityTown(current.campus || "");
-      setStateRegion(current.department || "");
-      setLandmark(current.landmark || "");
-
-      // Business & Verification
-      setBusinessName(current.business_name || "");
-      setBusinessCategory(current.business_category || "Fashion & Thrift Store");
-      setBio(current.bio || "");
-      setSocialHandle(current.social_handle || "");
-      setYearsInBusiness(current.years_in_business || "Under 1 year");
-
-      setIdType(current.id_type || "National ID (NIN)");
-      setIdNumber(current.id_number || current.student_id_number || "");
-      setIdImages(current.id_card_image ? [current.id_card_image] : []);
-
-      setBankName(current.bank_name || "OPay");
-      setAccountNumber(current.account_number || "");
-      setAccountName(current.account_name || "");
-    }
-  };
-
   useEffect(() => {
-    load();
-  }, []);
+    setUser(authUser);
+    setName(profile?.full_name || authUser?.name || "");
+    setPhone(profile?.phone || "");
+    setAvatar(profile?.avatar_url || "");
+    setCityTown(profile?.campus || "");
+  }, [authUser, profile]);
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -144,85 +119,29 @@ export default function ProfilePage() {
     }
   };
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     if (!user) return;
     setSaving(true);
     try {
-      const updated = updateUser(user.id, {
-        name: name.trim() || user.name,
-        phone: phone.trim(),
-        avatar_url: avatar,
-        address: streetAddress.trim(),
-        hostel: streetAddress.trim(),
-        campus: cityTown.trim(),
-        department: stateRegion.trim(),
-        landmark: landmark.trim(),
-        business_name: businessName.trim(),
-        business_category: businessCategory,
-        bio: bio.trim(),
-        social_handle: socialHandle.trim(),
-        years_in_business: yearsInBusiness,
-        id_type: idType,
-        id_number: idNumber.trim(),
-        student_id_number: idNumber.trim(),
-        id_card_image: idImages[0] || "",
-        bank_name: bankName,
-        account_number: accountNumber.trim(),
-        account_name: accountName.trim(),
-      });
-      setUser(updated);
+      const { error } = await supabase.from("profiles").update({ full_name: name.trim(), phone: phone.trim() || null, campus: cityTown.trim() || null, updated_at: new Date().toISOString() }).eq("id", user.id);
+      if (error) throw error;
+      await refreshAccount();
       toast.success("Profile details saved successfully! ✨");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to update profile");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to update profile");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleRequestVerification = () => {
+  const handleRequestVerification = async () => {
     if (!user) return;
     if (!phone || !cityTown) {
       toast.error("Please fill in your Phone Number and Location/Town.");
       return;
     }
-    if (user.role === "entrepreneur" && (!idNumber || !accountNumber)) {
-      toast.error("Please provide your ID Number and Payout Account Number for seller verification.");
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const updated = updateUser(user.id, {
-        name: name.trim() || user.name,
-        phone: phone.trim(),
-        avatar_url: avatar,
-        address: streetAddress.trim(),
-        hostel: streetAddress.trim(),
-        campus: cityTown.trim(),
-        department: stateRegion.trim(),
-        landmark: landmark.trim(),
-        business_name: businessName.trim(),
-        business_category: businessCategory,
-        bio: bio.trim(),
-        social_handle: socialHandle.trim(),
-        years_in_business: yearsInBusiness,
-        id_type: idType,
-        id_number: idNumber.trim(),
-        student_id_number: idNumber.trim(),
-        id_card_image: idImages[0] || "",
-        bank_name: bankName,
-        account_number: accountNumber.trim(),
-        account_name: accountName.trim(),
-        verification_status: "pending",
-        verification_requested_at: new Date().toISOString(),
-      });
-      setUser(updated);
-      toast.success("Verification request submitted to Admin! 🛡️");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to submit verification request");
-    } finally {
-      setSaving(false);
-    }
+    await handleSaveProfile();
+    toast.success("Profile saved. Verification review will be connected in the next step.");
   };
 
   if (!user) {
@@ -234,7 +153,7 @@ export default function ProfilePage() {
   }
 
   // Admin routing
-  if (user.role === "admin") {
+  if (isAdmin || user.role === "admin") {
     return (
       <div className="min-h-[80vh] flex items-center justify-center px-4">
         <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-border text-center space-y-4 shadow-xl">
@@ -258,11 +177,19 @@ export default function ProfilePage() {
     );
   }
 
-  const vStatus: VerificationStatus = user.verification_status || "unverified";
+  const vStatus = isVendor
+    ? vendorStore?.status === "approved"
+      ? "verified"
+      : vendorStore?.status === "pending"
+        ? "pending"
+        : "unverified"
+    : "unverified";
 
   return (
     <div className="min-h-screen bg-muted/20 py-10 px-4 sm:px-6">
       <div className="max-w-4xl mx-auto space-y-8">
+
+        <VendorVerificationPanel />
 
         {/* PROFILE HEADER CARD */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-border flex flex-col sm:flex-row items-center sm:items-start gap-6 relative overflow-hidden">

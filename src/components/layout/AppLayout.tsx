@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import SplashScreen from "@/components/common/SplashScreen";
+import Footer from "@/components/layout/Footer";
 
 export default function AppLayout() {
   const [showSplash, setShowSplash] = useState(() => {
@@ -20,6 +21,7 @@ export default function AppLayout() {
       <main className="flex-1">
         <Outlet />
       </main>
+      <Footer />
     </div>
   );
 }

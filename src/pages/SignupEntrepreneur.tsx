@@ -2,18 +2,18 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "@/contexts/AuthContext";
+import { Eye, EyeOff } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 export default function SignupEntrepreneur() {
   const navigate = useNavigate();
-  const { signup } = useAuth();
-
   const [name, setName] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -25,23 +25,26 @@ export default function SignupEntrepreneur() {
     setLoading(true);
 
     try {
-      await signup({
-        name,
-        email,
+      const { data, error: signupError } = await supabase.auth.signUp({
+        email: email.trim(),
         password,
-        role: "entrepreneur",
-        business_name: businessName,
-        phone,
-        address,
+        options: {
+          emailRedirectTo: `${window.location.origin}/login`,
+          data: {
+            full_name: name.trim(),
+            phone: phone.trim(),
+            campus: address.trim(),
+            role: "vendor",
+            store_name: businessName.trim() || null,
+          },
+        },
       });
+      if (signupError) throw signupError;
 
       setSuccess(true);
-
-      setTimeout(() => {
-        navigate("/");
-      }, 1200);
-    } catch (err: any) {
-      setError(err.message || "Signup failed");
+      if (data.session) navigate("/");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Signup failed");
     } finally {
       setLoading(false);
     }
@@ -53,74 +56,68 @@ export default function SignupEntrepreneur() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white p-6 rounded-xl shadow text-center">
             <h2 className="font-bold text-lg">Welcome 🚀</h2>
-            <p className="text-sm">Entrepreneur account created</p>
+            <p className="text-sm">Check your email to verify your account before signing in.</p>
           </div>
         </div>
       )}
 
-      <div className="mx-auto max-w-md p-6">
-        <h1 className="text-xl font-bold mb-2">Entrepreneur Sign Up</h1>
+      <div className="page-shell flex min-h-[calc(100vh-4rem)] items-center justify-center py-12"><div className="surface-card w-full max-w-md p-6 sm:p-8">
+        <p className="eyebrow">Seller account</p><h1 className="mt-2 page-title text-2xl">Set up your campus business</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">Create your profile now; verification and listings can be completed from your seller workspace.</p>
 
         {error && (
-          <div className="text-red-500 text-sm mb-3">{error}</div>
+          <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
         )}
 
         <form onSubmit={handleSignup} className="space-y-3">
-          <Input
-            placeholder="Full name"
+          <label className="field-label" htmlFor="entrepreneur-name">Full name</label><Input id="entrepreneur-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
           />
 
-          <Input
-            placeholder="Business name"
+          <label className="field-label" htmlFor="business-name">Business name <span className="font-normal text-muted-foreground">(optional)</span></label><Input id="business-name"
             value={businessName}
             onChange={(e) => setBusinessName(e.target.value)}
           />
 
-          <Input
-            placeholder="Email"
+          <label className="field-label" htmlFor="entrepreneur-email">Email address</label><Input id="entrepreneur-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
           />
 
-          <Input
-            placeholder="Phone number"
+          <label className="field-label" htmlFor="entrepreneur-phone">Phone number</label><Input id="entrepreneur-phone"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             required
           />
 
-          <Input
-            placeholder="Address / Location / Area"
+          <label className="field-label" htmlFor="entrepreneur-address">Campus location</label><Input id="entrepreneur-address"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             required
           />
 
-          <Input
-            placeholder="Password"
-            type="password"
+          <label className="field-label" htmlFor="entrepreneur-password">Password</label><div className="relative"><Input id="entrepreneur-password"
+            type={showPassword ? "text" : "password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-          />
+          /><button type="button" aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword(value => !value)} className="absolute right-2 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted">{showPassword ? <EyeOff /> : <Eye />}</button></div>
 
           <Button className="w-full" disabled={loading}>
             {loading ? "Creating..." : "Create Entrepreneur Account"}
           </Button>
         </form>
 
-        <p className="mt-4 text-sm">
+        <p className="mt-6 text-center text-sm text-muted-foreground">
           Already have an account?{" "}
           <Link to="/login" className="underline">
             Login
           </Link>
         </p>
-      </div>
+      </div></div>
     </>
   );
 }
