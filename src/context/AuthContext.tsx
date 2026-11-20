@@ -5,7 +5,7 @@ import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import {
   cleanAuthCallbackUrl,
   clearEmailVerificationPending,
-  hasAuthCallbackParams,
+  hasEmailVerificationCallbackParams,
   isEmailVerificationPending,
 } from "@/lib/authVerification";
 
@@ -44,6 +44,12 @@ export type SignupPayload = {
   phone?: string;
   campus?: string;
 };
+
+const PASSWORD_RECOVERY_PATHS = new Set(["/update-password", "/reset-password"]);
+
+function isPasswordRecoveryPath() {
+  return PASSWORD_RECOVERY_PATHS.has(window.location.pathname);
+}
 
 interface AuthContextType {
   session: Session | null;
@@ -141,6 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadAccountData]);
 
   const handleVerifiedSession = useCallback(async (nextSession: Session | null, fromAuthCallback = false) => {
+    if (isPasswordRecoveryPath()) return false;
     if (!nextSession?.user || !nextSession.user.email_confirmed_at) return false;
     if (verificationHandledRef.current) return false;
 
@@ -179,18 +186,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const code = new URLSearchParams(window.location.search).get("code");
-    if (code) {
+    if (code && !isPasswordRecoveryPath()) {
       supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
         if (!mounted || error || !data.session) return;
         void handleSession(data.session);
-        void handleVerifiedSession(data.session, true);
+        void handleVerifiedSession(data.session, hasEmailVerificationCallbackParams());
       });
     }
 
     supabase.auth.getSession().then(({ data }) => {
       if (mounted) {
         void handleSession(data.session);
-        if (!callbackHandled) void checkSessionForVerification(hasAuthCallbackParams());
+        if (!callbackHandled) void checkSessionForVerification(hasEmailVerificationCallbackParams());
       }
     });
 
@@ -198,8 +205,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!mounted) return;
 
       void handleSession(nextSession);
-      if (event === "SIGNED_IN") {
-        void handleVerifiedSession(nextSession, hasAuthCallbackParams());
+      if (event === "SIGNED_IN" && !isPasswordRecoveryPath()) {
+        void handleVerifiedSession(nextSession, hasEmailVerificationCallbackParams());
       }
     });
 
@@ -243,7 +250,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: payload.email,
       password: payload.password,
       options: {
-        emailRedirectTo: `${window.location.origin}/login`,
+        emailRedirectTo: `${window.location.origin}`,
         data: {
           full_name: payload.name,
           phone: payload.phone ?? null,

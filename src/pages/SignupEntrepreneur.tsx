@@ -34,7 +34,7 @@ export default function SignupEntrepreneur() {
         email: email.trim(),
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/login`,
+          emailRedirectTo: `${window.location.origin}`,
           data: {
             full_name: name.trim(),
             phone: phone.trim(),

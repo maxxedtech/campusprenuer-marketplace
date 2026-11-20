@@ -15,6 +15,7 @@ import SignupCustomer from "@/pages/SignupCustomer";
 import SignupEntrepreneur from "@/pages/SignupEntrepreneur";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
+import UpdatePassword from "@/pages/UpdatePassword";
 import NotFound from "@/pages/NotFound";
 import CartPage from "@/pages/CartPage";
 import ProductViewPage from "@/pages/ProductViewPage";
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="/signup/entrepreneur" element={<SignupEntrepreneur />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/update-password" element={<UpdatePassword />} />
 
         {/* 🔥 INBOX PAGE */}
         <Route

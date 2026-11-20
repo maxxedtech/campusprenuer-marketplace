@@ -31,6 +31,16 @@ export function hasAuthCallbackParams() {
   );
 }
 
+export function hasEmailVerificationCallbackParams() {
+  if (isEmailVerificationPending()) return true;
+  if (typeof window === "undefined") return false;
+
+  const search = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+
+  return search.get("type") === "signup" || hash.get("type") === "signup";
+}
+
 export function cleanAuthCallbackUrl() {
   if (typeof window === "undefined") return;
 

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { ordersForSeller, updateOrderStatus } from "@/lib/ordersStorage";
+import type { Order } from "@/lib/ordersStorage";
 import { Button } from "@/components/ui/button";
 
 export default function EntrepreneurOrders() {
@@ -12,7 +13,7 @@ export default function EntrepreneurOrders() {
     return ordersForSeller(user.id);
   }, [user, refresh]);
 
-  const setStatus = async (id: string, status: any) => {
+  const setStatus = async (id: string, status: Order["status"]) => {
     await updateOrderStatus(id, status);
     setRefresh((x) => x + 1);
   };
