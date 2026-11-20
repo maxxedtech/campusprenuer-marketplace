@@ -3,10 +3,9 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-if (!supabaseUrl || !supabasePublishableKey) {
-  throw new Error(
-    "Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY in .env.local",
-  );
-}
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabasePublishableKey);
 
-export const supabase = createClient(supabaseUrl, supabasePublishableKey);
+const clientUrl = supabaseUrl || "https://missing-supabase-config.supabase.co";
+const clientKey = supabasePublishableKey || "missing-supabase-publishable-key";
+
+export const supabase = createClient(clientUrl, clientKey);

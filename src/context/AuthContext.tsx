@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabase";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import {
   cleanAuthCallbackUrl,
   clearEmailVerificationPending,
@@ -163,6 +163,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true;
     let callbackHandled = false;
 
+    if (!isSupabaseConfigured) {
+      setLoading(false);
+      return () => {
+        mounted = false;
+      };
+    }
+
     const checkSessionForVerification = async (fromAuthCallback = false) => {
       const { data } = await supabase.auth.getSession();
       if (!mounted || !data.session) return;
@@ -216,6 +223,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadAccountData, session]);
 
   const login = useCallback(async (email: string, password: string) => {
+    if (!isSupabaseConfigured) {
+      throw new Error("Authentication is not configured for this deployment yet.");
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
     if (!data.user) throw new Error("Sign in did not return a user.");
@@ -224,6 +235,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadAccountData]);
 
   const signup = useCallback(async (payload: SignupPayload) => {
+    if (!isSupabaseConfigured) {
+      throw new Error("Authentication is not configured for this deployment yet.");
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email: payload.email,
       password: payload.password,
@@ -245,6 +260,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadAccountData]);
 
   const signOut = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
   }, []);

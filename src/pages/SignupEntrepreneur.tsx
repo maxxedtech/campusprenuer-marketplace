@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Eye, EyeOff } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { markEmailVerificationPending } from "@/lib/authVerification";
 
 export default function SignupEntrepreneur() {
@@ -26,6 +26,10 @@ export default function SignupEntrepreneur() {
     setLoading(true);
 
     try {
+      if (!isSupabaseConfigured) {
+        throw new Error("Authentication is not configured for this deployment yet.");
+      }
+
       const { data, error: signupError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
