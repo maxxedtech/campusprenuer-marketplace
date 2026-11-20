@@ -1,7 +1,13 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import {
+  cleanAuthCallbackUrl,
+  clearEmailVerificationPending,
+  hasAuthCallbackParams,
+  isEmailVerificationPending,
+} from "@/lib/authVerification";
 
 export type Role = "entrepreneur" | "customer" | "admin";
 
@@ -85,8 +91,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<string[]>([]);
   const [vendorStore, setVendorStore] = useState<VendorStore | null>(null);
   const [loading, setLoading] = useState(true);
+  const [emailVerifiedNotice, setEmailVerifiedNotice] = useState(false);
+  const verificationHandledRef = useRef(false);
 
-  const loadAccountData = async (accountUser: User) => {
+  const loadAccountData = useCallback(async (accountUser: User) => {
     const [profileRes, rolesRes, storeRes] = await Promise.all([
       supabase.from("profiles").select("id, full_name, email, phone, campus, avatar_url").eq("id", accountUser.id).maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", accountUser.id),
@@ -106,9 +114,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setVendorStore(nextStore);
     setUser(decorateUser(accountUser, nextProfile, nextRoles));
     return { profile: nextProfile, roles: nextRoles, vendorStore: nextStore };
-  };
+  }, []);
 
-  const handleSession = async (nextSession: Session | null) => {
+  const handleSession = useCallback(async (nextSession: Session | null) => {
     setSession(nextSession);
     if (!nextSession?.user) {
       setUser(null);
@@ -130,38 +138,92 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [loadAccountData]);
+
+  const handleVerifiedSession = useCallback(async (nextSession: Session | null, fromAuthCallback = false) => {
+    if (!nextSession?.user || !nextSession.user.email_confirmed_at) return false;
+    if (verificationHandledRef.current) return false;
+
+    const shouldHandle = fromAuthCallback || isEmailVerificationPending();
+    if (!shouldHandle) return false;
+
+    verificationHandledRef.current = true;
+    clearEmailVerificationPending();
+    cleanAuthCallbackUrl();
+    setEmailVerifiedNotice(true);
+
+    window.setTimeout(() => {
+      window.location.replace(`${window.location.origin}/`);
+    }, 900);
+
+    return true;
+  }, []);
 
   useEffect(() => {
     let mounted = true;
+    let callbackHandled = false;
+
+    const checkSessionForVerification = async (fromAuthCallback = false) => {
+      const { data } = await supabase.auth.getSession();
+      if (!mounted || !data.session) return;
+
+      const handled = await handleVerifiedSession(data.session, fromAuthCallback);
+      if (handled) callbackHandled = true;
+    };
+
+    const code = new URLSearchParams(window.location.search).get("code");
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+        if (!mounted || error || !data.session) return;
+        void handleSession(data.session);
+        void handleVerifiedSession(data.session, true);
+      });
+    }
 
     supabase.auth.getSession().then(({ data }) => {
-      if (mounted) void handleSession(data.session);
+      if (mounted) {
+        void handleSession(data.session);
+        if (!callbackHandled) void checkSessionForVerification(hasAuthCallbackParams());
+      }
     });
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      if (mounted) void handleSession(nextSession);
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (!mounted) return;
+
+      void handleSession(nextSession);
+      if (event === "SIGNED_IN") {
+        void handleVerifiedSession(nextSession, hasAuthCallbackParams());
+      }
     });
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void checkSessionForVerification();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       mounted = false;
       authListener.subscription.unsubscribe();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, []);
+  }, [handleSession, handleVerifiedSession]);
 
-  const refreshAccount = async () => {
+  const refreshAccount = useCallback(async () => {
     if (session?.user) await loadAccountData(session.user);
-  };
+  }, [loadAccountData, session]);
 
-  const login = async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
     if (!data.user) throw new Error("Sign in did not return a user.");
     const account = await loadAccountData(data.user);
     return decorateUser(data.user, account.profile, account.roles);
-  };
+  }, [loadAccountData]);
 
-  const signup = async (payload: SignupPayload) => {
+  const signup = useCallback(async (payload: SignupPayload) => {
     const { data, error } = await supabase.auth.signUp({
       email: payload.email,
       password: payload.password,
@@ -180,12 +242,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const account = await loadAccountData(data.user);
     setSession(data.session);
     return decorateUser(data.user, account.profile, account.roles);
-  };
+  }, [loadAccountData]);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
-  };
+  }, []);
 
   const value = useMemo<AuthContextType>(() => ({
     session,
@@ -203,9 +265,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signup,
     logout: signOut,
     signOut,
-  }), [session, user, profile, roles, vendorStore, loading]);
+  }), [login, profile, refreshAccount, roles, session, signOut, signup, user, vendorStore, loading]);
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+      {emailVerifiedNotice && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-brand-navy/45 p-4 backdrop-blur-sm" role="status" aria-live="polite">
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-background p-6 text-center shadow-soft-lg">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">✓</div>
+            <h2 className="mt-4 font-display text-xl font-semibold text-brand-navy">Email verified!</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Your account is ready. Redirecting you to CampusPreneur...</p>
+          </div>
+        </div>
+      )}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

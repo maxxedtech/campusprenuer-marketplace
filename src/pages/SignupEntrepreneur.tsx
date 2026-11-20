@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { markEmailVerificationPending } from "@/lib/authVerification";
 
 export default function SignupEntrepreneur() {
   const navigate = useNavigate();
@@ -41,8 +42,12 @@ export default function SignupEntrepreneur() {
       });
       if (signupError) throw signupError;
 
-      setSuccess(true);
-      if (data.session) navigate("/");
+      if (data.session) {
+        navigate("/");
+      } else {
+        markEmailVerificationPending();
+        setSuccess(true);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Signup failed");
     } finally {
@@ -54,9 +59,12 @@ export default function SignupEntrepreneur() {
     <>
       {success && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white p-6 rounded-xl shadow text-center">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-xl">
             <h2 className="font-bold text-lg">Welcome 🚀</h2>
-            <p className="text-sm">Check your email to verify your account before signing in.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Check your email to verify your account. This page will update automatically when verification is detected.</p>
+            <Button type="button" className="mt-5 w-full" onClick={() => window.location.reload()}>
+              I&apos;ve verified my email — Reload now
+            </Button>
           </div>
         </div>
       )}
