@@ -71,14 +71,16 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function roleFromRoles(roles: string[]): Role {
+function roleFromRoles(roles: string[], fallbackRole?: unknown): Role {
   if (roles.includes("admin")) return "admin";
   if (roles.includes("vendor") || roles.includes("entrepreneur")) return "entrepreneur";
+  if (fallbackRole === "admin") return "admin";
+  if (fallbackRole === "vendor" || fallbackRole === "entrepreneur") return "entrepreneur";
   return "customer";
 }
 
 function decorateUser(user: User, profile: UserProfile | null, roles: string[]): AuthUser {
-  const role = roleFromRoles(roles);
+  const role = roleFromRoles(roles, user.app_metadata?.role ?? user.user_metadata?.role);
   const name = profile?.full_name || user.user_metadata?.full_name || user.email || "Campus member";
 
   return {
@@ -101,19 +103,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const verificationHandledRef = useRef(false);
 
   const loadAccountData = useCallback(async (accountUser: User) => {
-    const [profileRes, rolesRes, storeRes] = await Promise.all([
-      supabase.from("profiles").select("id, full_name, email, phone, campus, avatar_url").eq("id", accountUser.id).maybeSingle(),
-      supabase.from("user_roles").select("role").eq("user_id", accountUser.id),
-      supabase.from("vendor_stores").select("id, store_name, slug, campus, description, status").eq("owner_id", accountUser.id).maybeSingle(),
-    ]);
-
-    if (profileRes.error) throw profileRes.error;
-    if (rolesRes.error) throw rolesRes.error;
-    if (storeRes.error) throw storeRes.error;
-
-    const nextProfile = profileRes.data as UserProfile | null;
-    const nextRoles = (rolesRes.data ?? []).map((item) => String(item.role));
-    const nextStore = storeRes.data as VendorStore | null;
+    const metadata = accountUser.user_metadata ?? {};
+    const nextProfile: UserProfile = {
+      id: accountUser.id,
+      full_name: String(metadata.full_name ?? accountUser.email ?? "Campus member"),
+      email: accountUser.email ?? "",
+      phone: typeof metadata.phone === "string" ? metadata.phone : null,
+      campus: typeof metadata.campus === "string" ? metadata.campus : null,
+      avatar_url: typeof metadata.avatar_url === "string" ? metadata.avatar_url : null,
+    };
+    const metadataRole = accountUser.app_metadata?.role ?? metadata.role;
+    const nextRoles = typeof metadataRole === "string" ? [metadataRole] : [];
+    const nextStore = null;
 
     setProfile(nextProfile);
     setRoles(nextRoles);
