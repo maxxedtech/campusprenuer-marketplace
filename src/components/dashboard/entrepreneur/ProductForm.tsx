@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { removeProductImage, uploadProductImage } from "@/lib/productImages";
 import type { ProductCategory, ProductStatus } from "@/types/product";
 import { toast } from "sonner";
 
@@ -18,10 +19,8 @@ type ProductRow = {
   price_kobo: number;
   stock_quantity: number;
   status: ProductStatus;
+  image_url: string | null;
 };
-
-const slugify = (value: string) => value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-const randomSuffix = () => Math.random().toString(36).slice(2, 7);
 
 function errorMessage(error: unknown, fallback: string) {
   if (error && typeof error === "object" && "message" in error && typeof error.message === "string") return error.message;
@@ -43,6 +42,7 @@ export default function ProductForm() {
   const [stockQuantity, setStockQuantity] = useState("0");
   const [status, setStatus] = useState<ProductStatus>("draft");
   const [file, setFile] = useState<File | null>(null);
+  const [existingImageUrl, setExistingImageUrl] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -64,7 +64,7 @@ export default function ProductForm() {
         if (id) {
           const productResult = await supabase
             .from("products")
-            .select("id, vendor_id, title, slug, category_id, description, price_kobo, stock_quantity, status")
+            .select("id, vendor_id, title, slug, category_id, description, price_kobo, stock_quantity, status, image_url")
             .eq("id", id)
             .eq("vendor_id", user.id)
             .maybeSingle();
@@ -80,6 +80,7 @@ export default function ProductForm() {
             setPrice(String(product.price_kobo / 100));
             setStockQuantity(String(product.stock_quantity));
             setStatus(product.status);
+            setExistingImageUrl(product.image_url || "");
           }
         }
       } catch (loadError: unknown) {
@@ -108,24 +109,29 @@ export default function ProductForm() {
     }
 
     setSaving(true);
+    let uploadedImagePath: string | null = null;
     try {
+      let imageUrl = existingImageUrl || null;
       if (file) {
-        throw new Error("Product image uploads are not available yet because public.products has no image column. Add an image_url column or product_media table before enabling image uploads.");
+        const upload = await uploadProductImage(user.id, file);
+        uploadedImagePath = upload.path;
+        imageUrl = upload.publicUrl;
       }
 
       const productPayload = {
         vendor_id: user.id,
         title: title.trim(),
-        slug: slug || `${slugify(title) || "product"}-${randomSuffix()}`,
+        slug: slug || `${title.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "product"}-${Math.random().toString(36).slice(2, 7)}`,
         category_id: categoryId,
         description: description.trim() || null,
         price_kobo: priceKobo,
         stock_quantity: Math.max(0, Math.floor(Number(stockQuantity) || 0)),
         status,
+        image_url: imageUrl,
       };
 
       if (id) {
-        const { error: updateError } = await supabase.from("products").update({ ...productPayload, updated_at: new Date().toISOString() }).eq("id", id).eq("vendor_id", user.id);
+        const { error: updateError } = await supabase.from("products").update(productPayload).eq("id", id).eq("vendor_id", user.id);
         if (updateError) throw updateError;
       } else {
         const { error: insertError } = await supabase.from("products").insert(productPayload);
@@ -135,6 +141,7 @@ export default function ProductForm() {
       toast.success(editing ? "Product updated." : "Product saved.");
       navigate("/dashboard/entrepreneur/products");
     } catch (saveError: unknown) {
+      if (uploadedImagePath) await removeProductImage(uploadedImagePath);
       const message = errorMessage(saveError, "Could not save product.");
       console.error("Could not save product:", saveError);
       setError(message);
@@ -160,8 +167,8 @@ export default function ProductForm() {
         </div>
         <div><label className="field-label" htmlFor="product-description">Description</label><textarea id="product-description" value={description} onChange={(event) => setDescription(event.target.value)} rows={5} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" /></div>
         <div>
-          <div className="flex items-center justify-between"><div><label className="field-label mb-0" htmlFor="product-images">Product image</label><p className="field-help">Mobile file selection is supported. Image saving is unavailable until the products schema has an image column.</p></div><ImagePlus className="h-5 w-5 text-brand-orange" /></div>
-          {file && <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">Selected: {file.name}. Saving is blocked because the current products table cannot store image URLs.</div>}
+          <div className="flex items-center justify-between"><div><label className="field-label mb-0" htmlFor="product-images">Product image</label><p className="field-help">JPG, PNG, or WEBP · max 5MB · stored in Supabase Storage</p></div><ImagePlus className="h-5 w-5 text-brand-orange" /></div>
+          {(file || existingImageUrl) && <div className="mt-3 flex items-center gap-3 rounded-lg border border-border p-3"><div className="h-16 w-16 overflow-hidden rounded-md bg-muted">{file ? <span className="flex h-full items-center justify-center p-2 text-center text-[10px]">{file.name}</span> : <img src={existingImageUrl} alt="Current product" className="h-full w-full object-cover" />}</div><p className="text-xs text-muted-foreground">{file ? file.name : "Current image"}</p></div>}
           <Input id="product-images" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => setFile(event.target.files?.[0] || null)} className="mt-3" />
         </div>
         <div className="flex justify-end"><Button type="submit" variant="hero" disabled={saving}>{saving && <Loader2 className="animate-spin" />}{saving ? "Saving..." : editing ? "Save changes" : "Save product"}</Button></div>

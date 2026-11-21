@@ -31,8 +31,7 @@ export interface ProductRecord {
   price_kobo: number;
   stock_quantity: number;
   status: ProductStatus;
-  created_at: string;
-  updated_at?: string | null;
+  image_url: string | null;
   category: ProductCategory | null;
   media: ProductMedia[];
   store?: { id: string; owner_id: string; store_name: string; slug: string; campus: string; status: string } | null;
