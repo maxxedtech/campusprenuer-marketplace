@@ -31,7 +31,7 @@ function errorMessage(error: unknown, fallback: string) {
 export default function ProductForm() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, vendorStore } = useAuth();
   const editing = Boolean(id);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [title, setTitle] = useState("");
@@ -51,7 +51,7 @@ export default function ProductForm() {
     let active = true;
 
     const load = async () => {
-      if (!user) {
+      if (!user || !vendorStore) {
         setLoading(false);
         return;
       }
@@ -66,7 +66,7 @@ export default function ProductForm() {
             .from("products")
             .select("id, vendor_id, title, slug, category_id, description, price_kobo, stock_quantity, status, image_url")
             .eq("id", id)
-            .eq("vendor_id", user.id)
+            .eq("vendor_id", vendorStore.id)
             .maybeSingle();
           if (productResult.error) throw productResult.error;
           if (!productResult.data) throw new Error("Product not found or you do not have access to it.");
@@ -94,9 +94,10 @@ export default function ProductForm() {
 
     void load();
     return () => { active = false; };
-  }, [id, user]);
+  }, [id, user, vendorStore]);
 
   if (!user) return <div className="surface-card p-8 text-center text-sm text-muted-foreground">Sign in to manage products.</div>;
+  if (!vendorStore) return <div className="surface-card p-8 text-center text-sm text-muted-foreground">Create your seller store before adding products.</div>;
   if (loading) return <div className="flex items-center justify-center p-12"><Loader2 className="h-7 w-7 animate-spin text-brand-orange" /></div>;
 
   const submit = async (event: React.FormEvent) => {
@@ -119,7 +120,7 @@ export default function ProductForm() {
       }
 
       const productPayload = {
-        vendor_id: user.id,
+        vendor_id: vendorStore.id,
         title: title.trim(),
         slug: slug || `${title.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "product"}-${Math.random().toString(36).slice(2, 7)}`,
         category_id: categoryId,
@@ -131,7 +132,7 @@ export default function ProductForm() {
       };
 
       if (id) {
-        const { error: updateError } = await supabase.from("products").update(productPayload).eq("id", id).eq("vendor_id", user.id);
+        const { error: updateError } = await supabase.from("products").update(productPayload).eq("id", id).eq("vendor_id", vendorStore.id);
         if (updateError) throw updateError;
       } else {
         const { error: insertError } = await supabase.from("products").insert(productPayload);

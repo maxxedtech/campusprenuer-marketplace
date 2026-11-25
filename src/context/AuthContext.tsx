@@ -114,7 +114,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     const metadataRole = accountUser.app_metadata?.role ?? metadata.role;
     const nextRoles = typeof metadataRole === "string" ? [metadataRole] : [];
-    const nextStore = null;
+    const { data: storeData, error: storeError } = await supabase
+      .from("vendor_stores")
+      .select("id, store_name, slug, campus, description, status")
+      .eq("owner_id", accountUser.id)
+      .maybeSingle();
+    if (storeError) throw storeError;
+    const nextStore = storeData as VendorStore | null;
 
     setProfile(nextProfile);
     setRoles(nextRoles);

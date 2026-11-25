@@ -58,7 +58,10 @@ export async function getMyProducts(): Promise<LocalProduct[]> {
   const { data: sessionData } = await supabase.auth.getSession();
   const userId = sessionData.session?.user.id;
   if (!userId) return [];
-  const { data, error } = await supabase.from("products").select(productSelect).eq("vendor_id", userId);
+  const { data: store, error: storeError } = await supabase.from("vendor_stores").select("id").eq("owner_id", userId).maybeSingle();
+  if (storeError) throw storeError;
+  if (!store) return [];
+  const { data, error } = await supabase.from("products").select(productSelect).eq("vendor_id", store.id);
   if (error) throw error;
   return (data ?? []).map((row) => toLocalProduct(normalizeProduct(row as Record<string, unknown>)));
 }

@@ -9,31 +9,31 @@ import { toast } from "sonner";
 
 export default function MyProducts() {
   const navigate = useNavigate();
-  const { user, isVendor } = useAuth();
+  const { user, isVendor, vendorStore } = useAuth();
   const [products, setProducts] = useState<ProductRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
-    if (!user) { setProducts([]); setLoading(false); return; }
+    if (!user || !vendorStore) { setProducts([]); setLoading(false); return; }
     setLoading(true);
-    const { data, error: queryError } = await supabase.from("products").select("id, vendor_id, title, slug, category_id, description, price_kobo, stock_quantity, status, image_url, categories(id, name, slug)").eq("vendor_id", user.id);
+    const { data, error: queryError } = await supabase.from("products").select("id, vendor_id, title, slug, category_id, description, price_kobo, stock_quantity, status, image_url, categories(id, name, slug)").eq("vendor_id", vendorStore.id);
     if (queryError) setError(queryError.message);
     else setProducts((data ?? []).map((row) => { const raw = row as Record<string, unknown>; return { ...(raw as unknown as ProductRecord), image_url: typeof raw.image_url === "string" ? raw.image_url : null, category: raw.categories as ProductRecord["category"], media: [] }; }));
     setLoading(false);
-  }, [user]);
+  }, [user, vendorStore]);
 
   useEffect(() => { void load(); }, [load]);
 
   if (!isVendor || !user) return null;
   const setStatus = async (product: ProductRecord, status: ProductStatus) => {
-    const { error: updateError } = await supabase.from("products").update({ status }).eq("id", product.id).eq("vendor_id", user.id);
+    const { error: updateError } = await supabase.from("products").update({ status }).eq("id", product.id).eq("vendor_id", vendorStore.id);
     if (updateError) toast.error(updateError.message); else { toast.success(`Product moved to ${status}.`); await load(); }
   };
 
   const remove = async (product: ProductRecord) => {
     if (!window.confirm(`Delete “${product.title}”?`)) return;
-    const { error: deleteError } = await supabase.from("products").delete().eq("id", product.id).eq("vendor_id", user.id);
+    const { error: deleteError } = await supabase.from("products").delete().eq("id", product.id).eq("vendor_id", vendorStore.id);
     if (deleteError) toast.error(deleteError.message); else { toast.success("Product deleted."); await load(); }
   };
 
