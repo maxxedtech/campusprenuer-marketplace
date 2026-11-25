@@ -112,3 +112,7 @@ Founder and Developer of CampusPrenuer
 
 CampusPrenuer was created with the vision of empowering student entrepreneurs and uncovering hidden business talents within campus communities.
 
+## Project architecture
+
+See [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md) for the folder tree, file-by-file guide, and everyday development workflow.
+
