@@ -87,7 +87,7 @@ export default function Index() {
                 Welcome, {user.name}! 👋
               </h1>
               <p className="text-base sm:text-lg text-slate-200 max-w-2xl">
-                Your campus marketplace hub is ready. Explore peer listings, message student businesses, and manage your orders.
+                Your marketplace hub is ready. Explore peer listings, message businesses, and manage your orders.
               </p>
             </div>
 
@@ -155,7 +155,7 @@ export default function Index() {
               </div>
               <div>
                 <h3 className="font-bold text-sm text-brand-navy">Live Chat</h3>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Talk to campus sellers</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Talk to sellers</p>
               </div>
             </Link>
 
@@ -220,7 +220,7 @@ export default function Index() {
             className="lg:col-span-7 text-center lg:text-left space-y-6"
           >
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-brand-navy leading-[1.15]">
-              Empower Student Hustles. <span className="text-brand-orange block sm:inline">Trade On Campus.</span>
+              Empower Local Businesses. <span className="text-brand-orange block sm:inline">Trade Across Nigeria.</span>
             </h1>
 
             <p className="text-lg sm:text-2xl font-bold text-gray-700 tracking-wide max-w-2xl mx-auto lg:mx-0">

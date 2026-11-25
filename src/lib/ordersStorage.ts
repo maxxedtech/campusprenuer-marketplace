@@ -58,7 +58,7 @@ export async function placeOrderFromCart() {
     customerId: user.id,
     customerName: user.name,
     customerPhone: user.phone || "",
-    customerAddress: user.hostel ? `${user.hostel}, Room ${user.room_number || "N/A"}` : (user.address || ""),
+    customerAddress: [user.address, user.city, user.state].filter(Boolean).join(", "),
     items,
     total: items.reduce((sum, item) => sum + item.price * item.qty, 0),
     status: "pending",

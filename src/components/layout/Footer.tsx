@@ -9,7 +9,7 @@ const Footer = () => {
         <div className="grid gap-8 sm:grid-cols-[1.5fr_1fr_1fr]">
           <div>
             <p className="font-display text-lg font-bold text-brand-navy">Campus<span className="text-brand-orange">preneur</span></p>
-            <p className="mt-2 max-w-xs text-sm leading-6 text-muted-foreground">A practical marketplace for student businesses, customers, and campus communities.</p>
+            <p className="mt-2 max-w-xs text-sm leading-6 text-muted-foreground">A practical marketplace for businesses, customers, and local communities.</p>
           </div>
           <div>
             <p className="text-xs font-bold uppercase tracking-[.16em] text-brand-navy">Explore</p>
@@ -22,7 +22,7 @@ const Footer = () => {
         </div>
         <div className="mt-8 flex flex-col gap-2 border-t border-border pt-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <p>© {year} CampusPreneur. All rights reserved.</p>
-          <p>Built for campus commerce.</p>
+          <p>Built for commerce across Nigeria.</p>
         </div>
       </div>
     </footer>

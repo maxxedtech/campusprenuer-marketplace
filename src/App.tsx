@@ -20,6 +20,8 @@ import NotFound from "@/pages/NotFound";
 import CartPage from "@/pages/CartPage";
 import ProductViewPage from "@/pages/ProductViewPage";
 import ProfilePage from "@/pages/ProfilePage";
+import Orders from "@/pages/Orders";
+import StorefrontPage from "@/pages/StorefrontPage";
 
 import EntrepreneurDashboard from "@/components/dashboard/EntrepreneurDashboard";
 import DashboardHome from "@/components/dashboard/entrepreneur/DashboardHome";
@@ -27,6 +29,8 @@ import AddProduct from "@/components/dashboard/entrepreneur/AddProduct";
 import MyProducts from "@/components/dashboard/entrepreneur/MyProducts";
 import EditProduct from "@/components/dashboard/entrepreneur/EditProduct";
 import ProductDetail from "@/components/dashboard/entrepreneur/ProductDetail";
+import VendorStorePanel from "@/components/dashboard/entrepreneur/VendorStorePanel";
+import EntrepreneurOrders from "@/components/dashboard/entrepreneur/Orders";
 
 export default function App() {
   return (
@@ -80,6 +84,8 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/store/:slug" element={<StorefrontPage />} />
+        <Route path="/orders" element={<ProtectedRoute allow={["customer"]}><Orders /></ProtectedRoute>} />
 
         <Route
   path="/profile"
@@ -108,8 +114,11 @@ export default function App() {
           }
         >
           <Route index element={<DashboardHome />} />
+          <Route path="new" element={<AddProduct />} />
           <Route path="add" element={<AddProduct />} />
           <Route path="products" element={<MyProducts />} />
+          <Route path="orders" element={<EntrepreneurOrders />} />
+          <Route path="store-setup" element={<VendorStorePanel />} />
           <Route path="products/:id/edit" element={<EditProduct />} />
           <Route path="product/:id" element={<ProductDetail />} />
         </Route>

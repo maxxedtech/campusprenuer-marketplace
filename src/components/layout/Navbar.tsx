@@ -10,42 +10,31 @@ import {
   LayoutDashboard,
   Store,
   Shield,
+  ChevronDown,
+  Inbox,
+  ClipboardList,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
-import { getUnreadCount } from "@/lib/chat";
+import { useUnreadMessages } from "@/contexts/UnreadMessagesContext";
 import { useAuth } from "@/contexts/AuthContext";
+import UserAvatar from "@/components/common/UserAvatar";
 
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, profile, isVendor, isAdmin, signOut, loading } = useAuth();
+  const { totalUnread: unread } = useUnreadMessages();
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [unread, setUnread] = useState(0);
 
   // Close mobile menu whenever location changes
   useEffect(() => {
     setMobileOpen(false);
     setProfileOpen(false);
   }, [location.pathname]);
-
-  useEffect(() => {
-    const load = async () => {
-      if (user && !isAdmin) {
-        const count = getUnreadCount(user.id);
-        setUnread(count);
-      } else {
-        setUnread(0);
-      }
-    };
-
-    load();
-    const interval = setInterval(load, 4000);
-    return () => clearInterval(interval);
-  }, [user, isAdmin]);
 
   const displayName = useMemo(() => {
     if (user?.role === "admin") return "Admin";
@@ -122,8 +111,8 @@ export default function Navbar() {
             >
               <MessageCircle className="w-5 h-5" />
               {unread > 0 && (
-                <span className="absolute -top-1 -right-1 bg-brand-orange text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ring-2 ring-white animate-pulse">
-                  {unread}
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center bg-brand-orange text-white text-[10px] font-bold px-1 rounded-full ring-2 ring-white">
+                  {unread > 99 ? "99+" : unread}
                 </span>
               )}
             </Link>
@@ -162,27 +151,11 @@ export default function Navbar() {
             </div>
           ) : (
             <div className="relative">
-              {/* PROFILE / ACCOUNT BUTTON */}
-              <button
-                aria-label={`Open ${displayName} account menu`}
-                aria-expanded={profileOpen}
-                onClick={() => setProfileOpen(!profileOpen)}
-                className="flex items-center gap-2 p-1.5 rounded-full hover:bg-muted/80 transition-all border border-border/60"
-              >
-                {avatar && user.role !== "admin" ? (
-                  <img
-                    src={avatar}
-                    alt={displayName}
-                    className="w-8 h-8 rounded-full object-cover border border-brand-navy/20"
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-brand-navy text-white flex items-center justify-center font-bold text-xs">
-                    {displayName[0]?.toUpperCase()}
-                  </div>
-                )}
-                <span className="text-sm font-semibold text-brand-navy pr-1">
-                  {displayName}
-                </span>
+              {/* Single account menu trigger */}
+              <button type="button" aria-label={`${displayName} account menu`} aria-expanded={profileOpen} onClick={() => setProfileOpen((open) => !open)} className="flex items-center gap-2 p-1.5 rounded-full hover:bg-muted/80 transition-all border border-border/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange">
+                <UserAvatar user={{ full_name: profile?.full_name || user.name, avatar_url: avatar }} size="sm" />
+                <span className="text-sm font-semibold text-brand-navy pr-1">{displayName}</span>
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${profileOpen ? "rotate-180" : ""}`} />
               </button>
 
               {/* DROPDOWN MENU */}
@@ -193,62 +166,38 @@ export default function Navbar() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 8, scale: 0.96 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute right-0 mt-2 w-56 bg-white/95 backdrop-blur-xl border border-border rounded-2xl shadow-xl p-2 space-y-1 z-50"
+                    className="absolute right-0 mt-2 w-64 bg-white/95 backdrop-blur-xl border border-border rounded-2xl shadow-xl p-2 space-y-1 z-50"
                   >
                     <div className="px-3 py-2 border-b border-border/50 mb-1">
                       <p className="text-xs text-muted-foreground">Signed in as</p>
                       <p className="text-sm font-bold text-brand-navy truncate">
-                        {user.name || user.email}
+                        {profile?.full_name || user.name || user.email}
                       </p>
+                      <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                       <span className="inline-block mt-1 text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full bg-brand-orange/10 text-brand-orange">
                         {user.role}
                       </span>
                     </div>
 
-                    {/* Admin: Show Admin Panel instead of Profile */}
-                    {user.role === "admin" ? (
-                      <button
-                        onClick={() => {
-                          setProfileOpen(false);
-                          navigate("/admin");
-                        }}
-                        className="w-full text-left px-3 py-2 hover:bg-muted rounded-xl text-sm font-medium flex items-center gap-2.5 text-gray-700 hover:text-brand-navy transition"
-                      >
-                        <Shield className="w-4 h-4 text-brand-orange" />
-                        Admin Control Panel
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setProfileOpen(false);
-                          navigate("/profile");
-                        }}
-                        className="w-full text-left px-3 py-2 hover:bg-muted rounded-xl text-sm font-medium flex items-center gap-2.5 text-gray-700 hover:text-brand-navy transition"
-                      >
-                        <User className="w-4 h-4 text-brand-navy" />
-                        Profile &amp; Address
-                      </button>
-                    )}
+                    <Link to={user.role === "admin" ? "/admin" : "/profile"} onClick={() => setProfileOpen(false)} className="w-full px-3 py-2 hover:bg-muted rounded-xl text-sm font-medium flex items-center gap-2.5 text-gray-700 hover:text-brand-navy transition"><User className="w-4 h-4 text-brand-navy" />My Profile</Link>
 
                     {user.role === "entrepreneur" && (
-                      <button
-                        onClick={() => {
-                          setProfileOpen(false);
-                          navigate("/dashboard/entrepreneur");
-                        }}
-                        className="w-full text-left px-3 py-2 hover:bg-muted rounded-xl text-sm font-medium flex items-center gap-2.5 text-gray-700 hover:text-brand-navy transition"
-                      >
+                      <Link to="/dashboard/entrepreneur" onClick={() => setProfileOpen(false)} className="w-full px-3 py-2 hover:bg-muted rounded-xl text-sm font-medium flex items-center gap-2.5 text-gray-700 hover:text-brand-navy transition">
                         <LayoutDashboard className="w-4 h-4 text-brand-orange" />
-                        Seller Dashboard
-                      </button>
+                        Seller Studio
+                      </Link>
                     )}
+
+                    {user.role === "customer" && <Link to="/orders" onClick={() => setProfileOpen(false)} className="w-full px-3 py-2 hover:bg-muted rounded-xl text-sm font-medium flex items-center gap-2.5 text-gray-700 hover:text-brand-navy transition"><ClipboardList className="w-4 h-4" />My Orders</Link>}
+                    {user.role !== "admin" && <Link to="/chat" onClick={() => setProfileOpen(false)} className="w-full px-3 py-2 hover:bg-muted rounded-xl text-sm font-medium flex items-center justify-between gap-2.5 text-gray-700 hover:text-brand-navy transition"><span className="flex items-center gap-2.5"><Inbox className="w-4 h-4" />Messages / Inbox</span>{unread > 0 && <span className="rounded-full bg-brand-orange px-2 py-0.5 text-xs font-bold text-white">{unread > 99 ? "99+" : unread}</span>}</Link>}
+                    <div className="my-1 border-t border-border/70" />
 
                     <button
                       onClick={handleLogout}
                       className="w-full text-left px-3 py-2 hover:bg-red-50 text-red-600 rounded-xl flex items-center gap-2.5 text-sm font-medium transition"
                     >
                       <LogOut className="w-4 h-4" />
-                      Logout
+                      Sign Out
                     </button>
                   </motion.div>
                 )}
@@ -266,8 +215,8 @@ export default function Navbar() {
             >
               <MessageCircle className="w-5 h-5" />
               {unread > 0 && (
-                <span className="absolute 0 right-0 bg-brand-orange text-white text-[9px] font-bold px-1 rounded-full">
-                  {unread}
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 flex items-center justify-center bg-brand-orange text-white text-[9px] font-bold px-1 rounded-full ring-2 ring-white">
+                  {unread > 99 ? "99+" : unread}
                 </span>
               )}
             </Link>
@@ -421,7 +370,7 @@ export default function Navbar() {
                   className="w-full border-red-200 text-red-600 hover:bg-red-50 flex items-center justify-center gap-2"
                 >
                   <LogOut className="w-4 h-4" />
-                  Logout ({displayName})
+                  Sign Out ({displayName})
                 </Button>
               )}
             </div>

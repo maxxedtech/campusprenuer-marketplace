@@ -1,38 +1,22 @@
-import { useMemo, useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { ordersForSeller, updateOrderStatus } from "@/lib/ordersStorage";
-import type { Order } from "@/lib/ordersStorage";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Check, Clock3, MapPin, PackageCheck, Phone, Truck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import UserAvatar from "@/components/common/UserAvatar";
+import { useAuth } from "@/contexts/AuthContext";
+import { fetchSellerOrders, setSellerOrderStatus, type SellerOrder, type SellerOrderStatus } from "@/lib/sellerOrders";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
+
+const filters: Array<{ value: "all" | SellerOrderStatus; label: string }> = [{ value: "all", label: "All" }, { value: "pending", label: "Pending" }, { value: "confirmed", label: "Confirmed / Processing" }, { value: "out_for_delivery", label: "Out for Delivery" }, { value: "delivered", label: "Delivered" }, { value: "cancelled", label: "Cancelled" }];
+const statusStyles: Record<string, string> = { pending: "bg-amber-100 text-amber-800", confirmed: "bg-blue-100 text-blue-800", processing: "bg-blue-100 text-blue-800", out_for_delivery: "bg-violet-100 text-violet-800", delivered: "bg-emerald-100 text-emerald-800", cancelled: "bg-slate-100 text-slate-700" };
+const formatDate = (date: string) => new Intl.DateTimeFormat("en-NG", { dateStyle: "medium", timeStyle: "short" }).format(new Date(date));
 
 export default function EntrepreneurOrders() {
-  const { user } = useAuth();
-  const [refresh, setRefresh] = useState(0);
-
-  const orders = useMemo(() => {
-    if (!user) return [];
-    return ordersForSeller(user.id);
-  }, [user, refresh]);
-
-  const setStatus = async (id: string, status: Order["status"]) => {
-    await updateOrderStatus(id, status);
-    setRefresh((x) => x + 1);
-  };
-
+  const { user, vendorStore } = useAuth(); const [orders, setOrders] = useState<SellerOrder[]>([]); const [filter, setFilter] = useState<"all" | SellerOrderStatus>("all"); const [loading, setLoading] = useState(true); const [error, setError] = useState(""); const [updating, setUpdating] = useState<string | null>(null);
+  const load = useCallback(async () => { if (!user || !vendorStore) { setOrders([]); setLoading(false); return; } setLoading(true); setError(""); try { setOrders(await fetchSellerOrders(user.id, vendorStore.id)); } catch (loadError) { console.error("[Orders & Fulfillments] load failed:", loadError instanceof Error ? loadError.message : loadError); setError(loadError instanceof Error ? loadError.message : "Could not load seller orders."); } finally { setLoading(false); } }, [user, vendorStore]);
+  useEffect(() => { void load(); if (!vendorStore) return; const channel = supabase.channel(`seller-orders-${vendorStore.id}`).on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => void load()).on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, () => void load()).subscribe(); return () => { void supabase.removeChannel(channel); }; }, [load, vendorStore]);
+  const visibleOrders = useMemo(() => filter === "all" ? orders : orders.filter((order) => filter === "confirmed" ? ["confirmed", "processing"].includes(order.status) : order.status === filter), [orders, filter]);
+  const update = async (order: SellerOrder, status: SellerOrderStatus) => { if (!vendorStore || !user) return; setUpdating(order.id); setOrders((current) => current.map((item) => item.id === order.id ? { ...item, status } : item)); try { await setSellerOrderStatus(order.id, user.id, status, vendorStore.id); toast.success(`Order marked ${status.replace(/_/g, " ")}.`); } catch (updateError) { setOrders((current) => current.map((item) => item.id === order.id ? { ...item, status: order.status } : item)); console.error("[Orders & Fulfillments] status update failed:", updateError instanceof Error ? updateError.message : updateError); toast.error(updateError instanceof Error ? updateError.message : "Could not update order."); } finally { setUpdating(null); } };
   if (!user) return null;
-
-  return (
-    <div>
-      <h2>Orders</h2>
-
-      {orders.map((o) => (
-        <div key={o.id}>
-          <p>{o.customerName}</p>
-
-          <Button onClick={() => setStatus(o.id, "confirmed")}>
-            Confirm
-          </Button>
-        </div>
-      ))}
-    </div>
-  );
+  return <main className="space-y-6"><header><p className="eyebrow">Seller Studio</p><h1 className="page-title text-2xl">Orders &amp; Fulfillments</h1><p className="mt-2 text-sm text-muted-foreground">Review customer orders and keep buyers up to date as you fulfill them.</p></header><div className="flex flex-wrap gap-2">{filters.map((item) => <Button key={item.value} size="sm" variant={filter === item.value ? "default" : "outline"} onClick={() => setFilter(item.value)}>{item.label}{item.value === "pending" && orders.filter((order) => order.status === "pending").length > 0 ? ` (${orders.filter((order) => order.status === "pending").length})` : ""}</Button>)}</div>{error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}{loading ? <div className="h-48 animate-pulse rounded-2xl bg-muted" /> : visibleOrders.length === 0 ? <div className="surface-card p-10 text-center"><PackageCheck className="mx-auto h-9 w-9 text-brand-orange" /><h2 className="mt-3 font-display text-lg font-semibold text-brand-navy">No orders in this view</h2><p className="mt-1 text-sm text-muted-foreground">New customer orders will appear here.</p></div> : <div className="space-y-4">{visibleOrders.map((order) => { const buyer = order.buyer; const phone = buyer?.phone || ""; const whatsapp = phone.replace(/\D/g, ""); return <article key={order.id} className="surface-card overflow-hidden"><header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/20 px-5 py-4"><div><h2 className="font-semibold text-brand-navy">Order #{order.id.slice(0, 8)}</h2><p className="mt-1 text-xs text-muted-foreground">{formatDate(order.created_at)}</p></div><div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-3 py-1 text-xs font-bold capitalize ${statusStyles[order.status] || "bg-muted"}`}>{order.status.replace(/_/g, " ")}</span><span className="rounded-full border border-border px-3 py-1 text-xs font-semibold capitalize">Payment: {order.payment_status || "unrecorded"}</span></div></header><div className="grid gap-5 p-5 lg:grid-cols-[1.2fr_.8fr]"><section className="space-y-3"><h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Products ordered</h3>{order.items.map((item) => <div key={item.id} className="flex items-center gap-3 rounded-xl border border-border/70 p-3">{(item.product?.image_url || item.product?.images?.[0]) ? <img src={item.product.image_url || item.product.images?.[0] || ""} alt="" className="h-14 w-14 rounded-lg object-cover" /> : <div className="h-14 w-14 rounded-lg bg-muted" />}<div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-brand-navy">{item.product?.title || "Product"}</p><p className="text-xs text-muted-foreground">{item.quantity} × ₦{(item.unit_price_kobo / 100).toLocaleString()}</p></div><p className="text-sm font-bold text-brand-orange">₦{((item.quantity * item.unit_price_kobo) / 100).toLocaleString()}</p></div>)}<p className="text-right text-sm font-bold text-brand-navy">Order total: ₦{(order.total_kobo / 100).toLocaleString()}</p></section><section className="space-y-3"><h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Customer details</h3><div className="flex items-center gap-3"><UserAvatar user={{ full_name: buyer?.full_name || "Customer", avatar_url: buyer?.avatar_url }} /><div><p className="text-sm font-semibold text-brand-navy">{buyer?.full_name || "Customer"}</p>{phone && <a href={`tel:${phone}`} className="inline-flex items-center gap-1 text-xs text-brand-orange underline"><Phone className="h-3 w-3" />{phone}</a>}</div></div><p className="flex items-start gap-2 text-sm text-muted-foreground"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-orange" />{[order.delivery_city || buyer?.city, order.delivery_state || buyer?.state].filter(Boolean).join(", ") || "Location not provided"}{order.delivery_note && ` · ${order.delivery_note}`}</p>{whatsapp && <a href={`https://wa.me/${whatsapp}`} target="_blank" rel="noreferrer" className="inline-flex rounded-lg border border-border px-3 py-2 text-xs font-semibold text-brand-navy hover:bg-muted">Contact on WhatsApp</a>}</section></div><footer className="flex flex-wrap justify-end gap-2 border-t border-border px-5 py-4">{order.status === "pending" && <Button size="sm" disabled={updating === order.id} onClick={() => void update(order, "confirmed")}><Check /> Confirm Order</Button>}{["confirmed", "processing"].includes(order.status) && <Button size="sm" disabled={updating === order.id} onClick={() => void update(order, "out_for_delivery")}><Truck /> Mark Out for Delivery</Button>}{order.status === "out_for_delivery" && <Button size="sm" disabled={updating === order.id} onClick={() => void update(order, "delivered")}><PackageCheck /> Mark Delivered</Button>}{!["delivered", "cancelled"].includes(order.status) && <Button size="sm" variant="outline" className="text-red-600" disabled={updating === order.id} onClick={() => void update(order, "cancelled")}><X /> Cancel</Button>}{updating === order.id && <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><Clock3 className="h-3.5 w-3.5 animate-spin" />Saving</span>}</footer></article>; })}</div>}</main>;
 }

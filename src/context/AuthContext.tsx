@@ -16,15 +16,25 @@ export interface UserProfile {
   full_name: string;
   email: string;
   phone: string | null;
-  campus: string | null;
+  city: string | null;
+  state?: string | null;
   avatar_url: string | null;
+  is_verified?: boolean;
+  guarantor_name?: string | null;
+  guarantor_phone?: string | null;
+  guarantor_relationship?: string | null;
+  guarantor_occupation_address?: string | null;
 }
 
 export interface VendorStore {
   id: string;
   store_name: string;
   slug: string;
-  campus: string;
+  city: string;
+  state: string;
+  business_category?: string | null;
+  phone?: string | null;
+  pickup_note?: string | null;
   description: string | null;
   status: "pending" | "approved" | "rejected" | "suspended";
 }
@@ -42,7 +52,8 @@ export type SignupPayload = {
   password: string;
   role: Role;
   phone?: string;
-  campus?: string;
+  city?: string;
+  state?: string;
 };
 
 const PASSWORD_RECOVERY_PATHS = new Set(["/update-password", "/reset-password"]);
@@ -81,14 +92,14 @@ function roleFromRoles(roles: string[], fallbackRole?: unknown): Role {
 
 function decorateUser(user: User, profile: UserProfile | null, roles: string[]): AuthUser {
   const role = roleFromRoles(roles, user.app_metadata?.role ?? user.user_metadata?.role);
-  const name = profile?.full_name || user.user_metadata?.full_name || user.email || "Campus member";
+  const name = profile?.full_name || user.user_metadata?.full_name || user.email || "Member";
 
   return {
     ...user,
     role,
     name,
     avatar_url: profile?.avatar_url ?? null,
-    verification_status: role === "admin" ? "verified" : "unverified",
+    verification_status: role === "admin" || profile?.is_verified === true ? "verified" : "unverified",
   };
 }
 
@@ -106,17 +117,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const metadata = accountUser.user_metadata ?? {};
     const nextProfile: UserProfile = {
       id: accountUser.id,
-      full_name: String(metadata.full_name ?? accountUser.email ?? "Campus member"),
+      full_name: String(metadata.full_name ?? accountUser.email ?? "Member"),
       email: accountUser.email ?? "",
       phone: typeof metadata.phone === "string" ? metadata.phone : null,
-      campus: typeof metadata.campus === "string" ? metadata.campus : null,
+      city: typeof metadata.city === "string" ? metadata.city : null,
+      state: typeof metadata.state === "string" ? metadata.state : null,
       avatar_url: typeof metadata.avatar_url === "string" ? metadata.avatar_url : null,
+      guarantor_name: typeof metadata.guarantor_name === "string" ? metadata.guarantor_name : null,
+      guarantor_phone: typeof metadata.guarantor_phone === "string" ? metadata.guarantor_phone : null,
+      guarantor_relationship: typeof metadata.guarantor_relationship === "string" ? metadata.guarantor_relationship : null,
+      guarantor_occupation_address: typeof metadata.guarantor_occupation_address === "string" ? metadata.guarantor_occupation_address : null,
     };
+    const { data: profileData } = await supabase.from("profiles").select("id, full_name, email, phone, city, state, avatar_url, is_verified, guarantor_name, guarantor_phone, guarantor_relationship, guarantor_occupation_address").eq("id", accountUser.id).maybeSingle();
+    if (profileData) Object.assign(nextProfile, profileData, { email: accountUser.email ?? "" });
+    else {
+      const { data: createdProfile } = await supabase.from("profiles").upsert({
+        id: accountUser.id, full_name: nextProfile.full_name, email: nextProfile.email, phone: nextProfile.phone,
+        city: nextProfile.city, state: nextProfile.state, avatar_url: nextProfile.avatar_url,
+        guarantor_name: nextProfile.guarantor_name, guarantor_phone: nextProfile.guarantor_phone,
+        guarantor_relationship: nextProfile.guarantor_relationship,
+        guarantor_occupation_address: nextProfile.guarantor_occupation_address,
+      }).select("id, full_name, email, phone, city, state, avatar_url, is_verified, guarantor_name, guarantor_phone, guarantor_relationship, guarantor_occupation_address").maybeSingle();
+      if (createdProfile) Object.assign(nextProfile, createdProfile, { email: accountUser.email ?? "" });
+    }
     const metadataRole = accountUser.app_metadata?.role ?? metadata.role;
     const nextRoles = typeof metadataRole === "string" ? [metadataRole] : [];
     const { data: storeData, error: storeError } = await supabase
       .from("vendor_stores")
-      .select("id, store_name, slug, campus, description, status")
+      .select("id, store_name, slug, city, state, description, business_category, phone, pickup_note, status")
       .eq("owner_id", accountUser.id)
       .maybeSingle();
     if (storeError) throw storeError;
@@ -261,7 +289,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: {
           full_name: payload.name,
           phone: payload.phone ?? null,
-          campus: payload.campus ?? null,
+          city: payload.city ?? null,
+          state: payload.state ?? "Borno",
           role: payload.role === "entrepreneur" ? "vendor" : payload.role,
         },
       },

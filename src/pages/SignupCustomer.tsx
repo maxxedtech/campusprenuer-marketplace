@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MaiduguriAreaField } from "@/components/common/MaiduguriAreaField";
 import { Eye, EyeOff } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { markEmailVerificationPending } from "@/lib/authVerification";
@@ -11,7 +12,8 @@ export default function SignupCustomer() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [campus, setCampus] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("Borno");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
@@ -34,12 +36,14 @@ export default function SignupCustomer() {
         password,
         options: {
           emailRedirectTo: `${window.location.origin}`,
-          data: { full_name: name.trim(), phone: phone.trim() || null, campus: campus.trim() || null, role: "customer" },
+          data: { full_name: name.trim(), phone: phone.trim() || null, city: city.trim() || null, state, role: "customer" },
         },
       });
       if (signupError) throw signupError;
 
-      if (data.session) {
+      if (data.session && data.user) {
+        const { error: profileError } = await supabase.from("profiles").upsert({ id: data.user.id, full_name: name.trim(), email: email.trim(), phone: phone.trim() || null, city: city.trim() || null, state, is_verified: false });
+        if (profileError) throw profileError;
         navigate("/");
       } else {
         markEmailVerificationPending();
@@ -67,7 +71,7 @@ export default function SignupCustomer() {
       )}
 
       <div className="page-shell flex min-h-[calc(100vh-4rem)] items-center justify-center py-12"><div className="surface-card w-full max-w-md p-6 sm:p-8">
-        <p className="eyebrow">Customer account</p><h1 className="mt-2 page-title text-2xl">Create your account</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">Shop from student businesses and connect with sellers on campus.</p>
+        <p className="eyebrow">Buyer account</p><h1 className="mt-2 page-title text-2xl">Create your account</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">Shop from businesses across Nigeria.</p>
 
         {error && (
           <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
@@ -89,7 +93,9 @@ export default function SignupCustomer() {
 
           <label className="field-label" htmlFor="customer-phone">Phone number <span className="font-normal text-muted-foreground">(optional)</span></label><Input id="customer-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
 
-          <label className="field-label" htmlFor="customer-campus">Campus or area <span className="font-normal text-muted-foreground">(optional)</span></label><Input id="customer-campus" value={campus} onChange={(e) => setCampus(e.target.value)} />
+          <div className="rounded-xl border border-brand-orange/30 bg-orange-50 px-4 py-3 text-sm text-brand-navy">Currently live in Maiduguri, Borno State (expanding to more cities soon).</div>
+          <MaiduguriAreaField id="customer-city" value={city} onChange={setCity} />
+          <label className="field-label" htmlFor="customer-state">State · Borno launch region</label><select id="customer-state" value={state} onChange={(e) => setState(e.target.value)} className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm">{["Borno","Abia","Adamawa","Akwa Ibom","Anambra","Bauchi","Bayelsa","Benue","Cross River","Delta","Ebonyi","Edo","Ekiti","Enugu","FCT","Gombe","Imo","Jigawa","Kaduna","Kano","Katsina","Kebbi","Kogi","Kwara","Lagos","Nasarawa","Niger","Ogun","Ondo","Osun","Oyo","Plateau","Rivers","Sokoto","Taraba","Yobe","Zamfara"].map((item) => <option key={item} value={item}>{item === "Borno" ? item : `${item} — Coming Soon`}</option>)}</select>
 
           <label className="field-label" htmlFor="customer-password">Password</label><div className="relative"><Input id="customer-password"
             type={showPassword ? "text" : "password"}

@@ -1,4 +1,5 @@
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   PlusCircle,
@@ -8,14 +9,28 @@ import {
   Store,
   ExternalLink,
   ShieldCheck,
+  ClipboardList,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import UserAvatar from "@/components/common/UserAvatar";
+import { fetchSellerOrders } from "@/lib/sellerOrders";
+import { supabase } from "@/lib/supabase";
 
 export default function EntrepreneurDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, profile, vendorStore, logout } = useAuth();
+  const [activeOrders, setActiveOrders] = useState(0);
+
+  useEffect(() => {
+    if (!vendorStore) { setActiveOrders(0); return; }
+    let alive = true;
+    const loadCount = async () => { try { const orders = await fetchSellerOrders(vendorStore.id); if (alive) setActiveOrders(orders.filter((order) => !["delivered", "cancelled"].includes(order.status)).length); } catch { if (alive) setActiveOrders(0); } };
+    void loadCount();
+    const channel = supabase.channel(`seller-order-count-${vendorStore.id}`).on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => void loadCount()).on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, () => void loadCount()).subscribe();
+    return () => { alive = false; void supabase.removeChannel(channel); };
+  }, [vendorStore]);
 
   const handleLogout = async () => {
     await logout();
@@ -30,7 +45,7 @@ export default function EntrepreneurDashboard() {
       end: true,
     },
     {
-      to: "/dashboard/entrepreneur/add",
+      to: "/dashboard/entrepreneur/new",
       label: "Add New Product",
       icon: PlusCircle,
       end: false,
@@ -41,6 +56,8 @@ export default function EntrepreneurDashboard() {
       icon: Package,
       end: false,
     },
+    { to: "/dashboard/entrepreneur/orders", label: "Orders & Fulfillments", icon: ClipboardList, end: false, badge: activeOrders },
+    { to: "/dashboard/entrepreneur/store-setup", label: "Store Setup & Verification", icon: Store, end: false },
   ];
 
   return (
@@ -58,7 +75,7 @@ export default function EntrepreneurDashboard() {
                 <h2 className="font-extrabold text-brand-navy text-sm leading-tight">
                   Seller Studio
                 </h2>
-                <p className="text-[11px] text-muted-foreground">Campus Business Suite</p>
+                <p className="text-[11px] text-muted-foreground">Business Suite</p>
               </div>
             </div>
           </div>
@@ -66,17 +83,11 @@ export default function EntrepreneurDashboard() {
           {/* User info badge */}
           {user && (
             <div className="p-3 rounded-2xl bg-muted/50 border border-border/60 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-brand-navy text-white font-bold flex items-center justify-center text-sm shrink-0">
-                {user.avatar_url ? (
-                  <img src={user.avatar_url} alt="" className="w-full h-full object-cover rounded-xl" />
-                ) : (
-                  user.name?.[0]?.toUpperCase()
-                )}
-              </div>
+              <UserAvatar user={{ full_name: profile?.full_name || user.name, avatar_url: profile?.avatar_url || user.avatar_url }} size="md" className="rounded-xl" />
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-bold text-brand-navy truncate flex items-center gap-1">
                   {user.name}
-                  {user.verification_status === "verified" && (
+                  {(profile?.is_verified || user.verification_status === "verified") && (
                     <ShieldCheck className="w-3.5 h-3.5 text-green-600 shrink-0" />
                   )}
                 </p>
@@ -108,6 +119,7 @@ export default function EntrepreneurDashboard() {
                 >
                   <Icon className={`w-4 h-4 ${isActive ? "text-brand-orange" : "text-gray-500"}`} />
                   {item.label}
+                  {"badge" in item && item.badge > 0 && <span className="ml-auto rounded-full bg-brand-orange px-2 py-0.5 text-[10px] font-bold text-white">{item.badge > 99 ? "99+" : item.badge}</span>}
                 </NavLink>
               );
             })}

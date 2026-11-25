@@ -22,7 +22,7 @@ type CartLine = { product: LocalProduct; qty: number };
 export default function CartPage() {
   const navigate = useNavigate();
   const [lines, setLines] = useState<CartLine[]>([]);
-  const [user, setUser] = useState<{ hostel?: string; room_number?: string } | null>(null);
+  const [user, setUser] = useState<{ city?: string; state?: string } | null>(null);
   const [checkingOut, setCheckingOut] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -183,7 +183,7 @@ export default function CartPage() {
                     <span className="font-bold text-brand-navy">₦{total.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Campus Pickup Fee</span>
+                    <span>Delivery Fee</span>
                     <span className="font-bold text-green-600">FREE</span>
                   </div>
                 </div>
@@ -194,12 +194,12 @@ export default function CartPage() {
                 </div>
 
                 {/* Delivery Address Preview */}
-                {user?.hostel && (
+                {(user?.city || user?.state) && (
                   <div className="p-3 rounded-2xl bg-muted/40 text-[11px] text-gray-600 space-y-1">
                     <span className="font-bold text-brand-navy flex items-center gap-1">
                       <MapPin className="w-3 h-3 text-brand-orange" /> Delivery Location:
                     </span>
-                    <p>{user.hostel}, Room {user.room_number || "N/A"}</p>
+                    <p>{[user.city, user.state].filter(Boolean).join(", ")}</p>
                   </div>
                 )}
 

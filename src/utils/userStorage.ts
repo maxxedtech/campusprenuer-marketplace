@@ -12,17 +12,18 @@ export type UserRecord = {
   business_category?: string;
   phone?: string;
   address?: string;
-  campus?: string;
-  department?: string;
-  hostel?: string;
-  room_number?: string;
+  city?: string;
+  state?: string;
+
+
+
   landmark?: string;
   bio?: string;
   avatar_url?: string;
-  student_id_number?: string;
-  id_type?: string;
-  id_number?: string;
-  id_card_image?: string;
+
+
+
+
   social_handle?: string;
   bank_name?: string;
   account_number?: string;

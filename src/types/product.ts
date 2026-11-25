@@ -32,9 +32,11 @@ export interface ProductRecord {
   stock_quantity: number;
   status: ProductStatus;
   image_url: string | null;
+  images?: string[];
+  seller?: { id: string; full_name: string; avatar_url: string | null; is_verified: boolean; city?: string | null; state?: string | null } | null;
   category: ProductCategory | null;
   media: ProductMedia[];
-  store?: { id: string; owner_id: string; store_name: string; slug: string; campus: string; status: string } | null;
+  store?: { id: string; owner_id: string; store_name: string; slug: string; city: string; state: string; status: string } | null;
   sellerName?: string;
   sellerEmail?: string;
 }

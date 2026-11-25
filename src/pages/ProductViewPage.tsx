@@ -1,53 +1,47 @@
-import { useEffect, useState } from "react";
-import { ArrowLeft, CheckCircle2, MessageCircle, Share2, ShoppingCart, Store } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, CheckCircle2, ChevronLeft, ChevronRight, MessageCircle, Share2, ShoppingCart, Store, X } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import UserAvatar from "@/components/common/UserAvatar";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabase";
 import { addToCart } from "@/lib/cartStorage";
 import { fetchProductRecordByIdentifier, fetchPublishedProductRecords } from "@/lib/products";
 import type { ProductRecord } from "@/types/product";
 import { toast } from "sonner";
 
 export default function ProductViewPage() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const [product, setProduct] = useState<ProductRecord | null>(null);
-  const [related, setRelated] = useState<ProductRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-
+  const { id } = useParams(); const navigate = useNavigate(); const { user, vendorStore } = useAuth();
+  const [product, setProduct] = useState<ProductRecord | null>(null); const [related, setRelated] = useState<ProductRecord[]>([]); const [loading, setLoading] = useState(true); const [lightbox, setLightbox] = useState<number | null>(null);
+  const countedViews = useRef(new Set<string>());
+  useEffect(() => { if (!id) return; let active = true; const load = async () => { setLoading(true); try { const next = await fetchProductRecordByIdentifier(id); if (!next || next.status !== "published") { if (active) setProduct(null); return; } const all = await fetchPublishedProductRecords(); if (active) { setProduct(next); setRelated(all.filter((item) => item.id !== next.id && item.category_id === next.category_id).slice(0, 4)); } } catch (error) { console.error("Could not load product:", error); if (active) setProduct(null); } finally { if (active) setLoading(false); } }; void load(); return () => { active = false; }; }, [id]);
+  const images = useMemo(() => product ? Array.from(new Set([...(product.images || []), product.image_url].filter((url): url is string => Boolean(url)))) : [], [product]);
+  const move = useCallback((delta: number) => setLightbox((index) => index === null || !images.length ? index : (index + delta + images.length) % images.length), [images.length]);
+  useEffect(() => { if (lightbox === null) return; const key = (event: KeyboardEvent) => { if (event.key === "Escape") setLightbox(null); if (event.key === "ArrowLeft") move(-1); if (event.key === "ArrowRight") move(1); }; window.addEventListener("keydown", key); return () => window.removeEventListener("keydown", key); }, [lightbox, move]);
   useEffect(() => {
-    if (!id) return;
-    let active = true;
-    const load = async () => {
-      setLoading(true);
-      try {
-        const nextProduct = await fetchProductRecordByIdentifier(id);
-        if (!nextProduct || nextProduct.status !== "published") {
-          if (active) setProduct(null);
-          return;
-        }
-        const all = await fetchPublishedProductRecords();
-        if (active) {
-          setProduct(nextProduct);
-          setRelated(all.filter((item) => item.id !== nextProduct.id && item.category_id === nextProduct.category_id).slice(0, 4));
-        }
-      } catch (loadError: unknown) {
-        console.error("Could not load product:", loadError);
-        if (active) setProduct(null);
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-    void load();
-    return () => { active = false; };
-  }, [id]);
-
+    if (!product || !user || countedViews.current.has(product.id)) return;
+    const isSeller = product.seller?.id === user.id || vendorStore?.id === product.vendor_id;
+    if (isSeller) return;
+    countedViews.current.add(product.id);
+    void supabase.rpc("increment_product_view", { product_id: product.id }).then(({ error }) => {
+      if (error) { countedViews.current.delete(product.id); console.error("Could not record product view:", error); }
+    });
+  }, [product, user, vendorStore]);
   if (loading) return <div className="page-shell py-10"><div className="grid gap-8 lg:grid-cols-2"><div className="aspect-square animate-pulse rounded-3xl bg-muted" /><div className="space-y-4"><div className="h-8 w-2/3 animate-pulse rounded bg-muted" /><div className="h-10 w-1/3 animate-pulse rounded bg-muted" /><div className="h-32 animate-pulse rounded-2xl bg-muted" /></div></div></div>;
   if (!product) return <div className="surface-card mx-auto my-12 max-w-md p-8 text-center"><p className="font-bold text-muted-foreground">This product is no longer available.</p><Button className="mt-5" onClick={() => navigate("/marketplace")}>Back to marketplace</Button></div>;
-
+  const seller = product.seller;
+  const sellerId = seller?.id || product.vendor_id;
+  const own = Boolean(user && (user.id === sellerId || vendorStore?.id === product.vendor_id));
   const price = product.price_kobo / 100;
   const available = product.stock_quantity > 0;
-  const handleAddToCart = () => { addToCart(product.id, 1); toast.success(`“${product.title}” added to your cart.`); };
-  const handleShare = () => { if (navigator.share) void navigator.share({ title: product.title, text: `Check out ${product.title} on CampusPreneur for ₦${price.toLocaleString()}!`, url: window.location.href }); else { void navigator.clipboard.writeText(window.location.href); toast.success("Link copied to clipboard."); } };
-
-  return <div className="page-shell py-8 sm:py-12"><div className="mx-auto max-w-6xl space-y-8"><div className="flex items-center justify-between"><Button variant="ghost" onClick={() => navigate("/marketplace")}><ArrowLeft /> Back to marketplace</Button><Button variant="outline" size="sm" onClick={handleShare}><Share2 /> Share</Button></div><div className="surface-card grid gap-8 p-5 sm:p-8 md:grid-cols-12"><div className="md:col-span-6"><div className="relative aspect-square overflow-hidden rounded-2xl bg-muted">{product.image_url ? <img src={product.image_url} alt={product.title} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-muted-foreground"><Store className="h-16 w-16" /></div>}</div></div><div className="flex flex-col justify-between space-y-6 md:col-span-6"><div className="space-y-5"><div><div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-bold text-brand-orange">{product.category?.name || "General"}</span><span className={`rounded-full px-3 py-1 text-xs font-bold ${available ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-700"}`}>{available ? `${product.stock_quantity} available` : "Unavailable"}</span></div><h1 className="mt-4 text-2xl font-extrabold leading-tight text-brand-navy sm:text-3xl">{product.title}</h1><p className="mt-2 font-display text-3xl font-black text-brand-orange">₦{price.toLocaleString()}</p></div><div className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 p-4"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-navy font-bold text-white">S</div><div><p className="text-sm font-bold text-brand-navy">Campus seller</p><p className="text-xs text-muted-foreground">Campus pickup</p></div></div><div><h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Product details</h2><p className="mt-2 whitespace-pre-line text-sm leading-7 text-foreground">{product.description || "No description provided by the seller."}</p></div></div><div className="space-y-3 border-t border-border pt-4"><div className="grid grid-cols-2 gap-3"><Button onClick={handleAddToCart} disabled={!available} variant="hero" className="h-12"><ShoppingCart /> {available ? "Add to cart" : "Unavailable"}</Button><Button variant="outline" className="h-12" onClick={() => navigate(`/chat-room?seller=${product.vendor_id}&name=Campus%20seller`)}><MessageCircle /> Chat seller</Button></div><p className="flex items-center justify-center gap-2 text-center text-xs text-muted-foreground"><CheckCircle2 className="h-4 w-4 text-brand-orange" /> Agree pickup details directly with the seller.</p></div></div></div>{related.length > 0 && <section><h2 className="font-display text-xl font-semibold text-brand-navy">More from this category</h2><div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">{related.map((item) => <Link key={item.id} to={`/product/${item.id}`} className="surface-card overflow-hidden p-3"><div className="h-28 overflow-hidden rounded-lg bg-muted">{item.image_url ? <img src={item.image_url} alt={item.title} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-muted-foreground"><Store /></div>}</div><h3 className="mt-2 truncate text-sm font-semibold text-brand-navy">{item.title}</h3><p className="text-sm font-bold text-brand-orange">₦{(item.price_kobo / 100).toLocaleString()}</p></Link>)}</div></section>}</div></div>;
+  const handleShare = () => { if (navigator.share) void navigator.share({ title: product.title, text: `Check out ${product.title} for ₦${price.toLocaleString()}!`, url: window.location.href }); else { void navigator.clipboard.writeText(window.location.href); toast.success("Link copied to clipboard."); } };
+  const handleMessageSeller = () => {
+    if (!user || !sellerId || user.id === sellerId || vendorStore?.id === product.vendor_id) return;
+    navigate(
+      `/chat-room?seller=${encodeURIComponent(sellerId)}&name=${encodeURIComponent(
+        seller?.full_name?.trim() || "Campus Member"
+      )}&product=${encodeURIComponent(product.title)}`
+    );
+  };
+  return <div className="page-shell py-8 sm:py-12"><div className="mx-auto max-w-6xl space-y-8"><div className="flex items-center justify-between"><Button variant="ghost" onClick={() => navigate("/marketplace")}><ArrowLeft /> Back to marketplace</Button><Button variant="outline" size="sm" onClick={handleShare}><Share2 /> Share</Button></div><div className="surface-card grid gap-8 p-5 sm:p-8 md:grid-cols-12"><div className="md:col-span-6"><div className="relative aspect-square overflow-hidden rounded-2xl bg-muted">{images[0] ? <button type="button" onClick={() => setLightbox(0)} className="h-full w-full cursor-zoom-in" aria-label="Open product image gallery"><img src={images[0]} alt={product.title} className="h-full w-full object-cover" /></button> : <div className="flex h-full items-center justify-center text-muted-foreground"><Store className="h-16 w-16" /></div>}{images.length > 1 && <div className="absolute bottom-3 right-3 rounded-full bg-black/70 px-3 py-1 text-xs text-white">{images.length} photos</div>}</div>{images.length > 1 && <div className="mt-3 flex gap-2 overflow-x-auto">{images.map((image, index) => <button key={image} onClick={() => setLightbox(index)} className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border" aria-label={`View photo ${index + 1}`}><img src={image} alt="" className="h-full w-full object-cover" /></button>)}</div>}</div><div className="flex flex-col justify-between space-y-6 md:col-span-6"><div className="space-y-5"><div><div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-bold text-brand-orange">{product.category?.name || "General"}</span><span className={`rounded-full px-3 py-1 text-xs font-bold ${available ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-700"}`}>{available ? `${product.stock_quantity} available` : "Unavailable"}</span></div><h1 className="mt-4 text-2xl font-extrabold leading-tight text-brand-navy sm:text-3xl">{product.title}</h1><p className="mt-2 font-display text-3xl font-black text-brand-orange">₦{price.toLocaleString()}</p></div><div className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 p-4"><UserAvatar user={{ full_name: seller?.full_name || "Seller", avatar_url: seller?.avatar_url }} /><div className="min-w-0"><p className="truncate text-sm font-bold text-brand-navy">{seller?.full_name || "Seller"}</p><p className={`text-xs ${seller?.is_verified ? "text-emerald-700" : "text-muted-foreground"}`}>{seller?.is_verified ? <><CheckCircle2 className="mr-1 inline h-3.5 w-3.5" />Verified</> : "Unverified"}</p><p className="text-xs text-muted-foreground">{[seller?.city, seller?.state].filter(Boolean).join(", ")}</p></div></div><div><h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Product details</h2><p className="mt-2 whitespace-pre-line text-sm leading-7 text-foreground">{product.description || "No description provided by the seller."}</p></div></div><div className="space-y-3 border-t border-border pt-4">{own ? <div className="flex items-center justify-between gap-4"><span className="rounded-full bg-brand-navy px-3 py-1 text-xs font-bold text-white">Your Listing</span><Button asChild variant="outline"><Link to="/dashboard/entrepreneur">Manage in Dashboard</Link></Button></div> : <><div className="grid grid-cols-2 gap-3"><Button onClick={() => { addToCart(product.id, 1); toast.success(`“${product.title}” added to your cart.`); }} disabled={!available} variant="hero" className="h-12"><ShoppingCart /> {available ? "Add to cart" : "Unavailable"}</Button><Button variant="outline" className="h-12" disabled={!user || own} onClick={handleMessageSeller}><MessageCircle /> Message seller</Button></div><p className="flex items-center justify-center gap-2 text-center text-xs text-muted-foreground"><CheckCircle2 className="h-4 w-4 text-brand-orange" /> Agree delivery details directly with the seller.</p></>}</div></div></div>{related.length > 0 && <section><h2 className="font-display text-xl font-semibold text-brand-navy">More from this category</h2><div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">{related.map((item) => <Link key={item.id} to={`/product/${item.id}`} className="surface-card overflow-hidden p-3"><div className="h-28 overflow-hidden rounded-lg bg-muted">{item.image_url ? <img src={item.image_url} alt={item.title} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-muted-foreground"><Store /></div>}</div><h3 className="mt-2 truncate text-sm font-semibold text-brand-navy">{item.title}</h3><p className="text-sm font-bold text-brand-orange">₦{(item.price_kobo / 100).toLocaleString()}</p></Link>)}</div></section>}</div>{lightbox !== null && <div role="dialog" aria-modal="true" aria-label="Product image gallery" className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/95 p-4" onClick={() => setLightbox(null)}><button className="absolute right-4 top-4 rounded-full bg-white/10 p-3 text-white" aria-label="Close gallery"><X /></button><div className="absolute left-4 top-1/2 -translate-y-1/2">{images.length > 1 && <button className="rounded-full bg-white/10 p-3 text-white" aria-label="Previous image" onClick={(event) => { event.stopPropagation(); move(-1); }}><ChevronLeft /></button>}</div><img src={images[lightbox]} alt={`${product.title}, photo ${lightbox + 1}`} className="max-h-[75vh] max-w-[90vw] object-contain" onClick={(event) => event.stopPropagation()} /><p className="mt-3 text-sm text-white">{lightbox + 1} / {images.length}</p>{images.length > 1 && <div className="mt-4 flex max-w-full gap-2 overflow-x-auto" onClick={(event) => event.stopPropagation()}>{images.map((image, index) => <button key={image} onClick={() => setLightbox(index)} aria-label={`Show image ${index + 1}`} className={`h-14 w-14 shrink-0 overflow-hidden rounded border-2 ${index === lightbox ? "border-brand-orange" : "border-white/30"}`}><img src={image} alt="" className="h-full w-full object-cover" /></button>)}</div>}<div className="absolute right-4 top-1/2 -translate-y-1/2">{images.length > 1 && <button className="rounded-full bg-white/10 p-3 text-white" aria-label="Next image" onClick={(event) => { event.stopPropagation(); move(1); }}><ChevronRight /></button>}</div></div>}</div>;
 }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MaiduguriAreaField } from "@/components/common/MaiduguriAreaField";
 import { Eye, EyeOff } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { markEmailVerificationPending } from "@/lib/authVerification";
@@ -13,6 +14,11 @@ export default function SignupEntrepreneur() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("Borno");
+  const [guarantorName, setGuarantorName] = useState("");
+  const [guarantorPhone, setGuarantorPhone] = useState("");
+  const [guarantorRelationship, setGuarantorRelationship] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
@@ -29,6 +35,7 @@ export default function SignupEntrepreneur() {
       if (!isSupabaseConfigured) {
         throw new Error("Authentication is not configured for this deployment yet.");
       }
+      if (!/^\+?[0-9\s()-]{10,16}$/.test(guarantorPhone.trim())) throw new Error("Enter a valid guarantor phone number.");
 
       const { data, error: signupError } = await supabase.auth.signUp({
         email: email.trim(),
@@ -38,7 +45,12 @@ export default function SignupEntrepreneur() {
           data: {
             full_name: name.trim(),
             phone: phone.trim(),
-            campus: address.trim(),
+            business_address: address.trim(),
+            city: city.trim(),
+            state,
+            guarantor_name: guarantorName.trim(),
+            guarantor_phone: guarantorPhone.trim(),
+            guarantor_relationship: guarantorRelationship.trim(),
             role: "vendor",
             store_name: businessName.trim() || null,
           },
@@ -46,7 +58,12 @@ export default function SignupEntrepreneur() {
       });
       if (signupError) throw signupError;
 
-      if (data.session) {
+      if (data.session && data.user) {
+        const { error: profileError } = await supabase.from("profiles").upsert({
+          id: data.user.id, full_name: name.trim(), email: email.trim(), phone: phone.trim(), city: city.trim(), state,
+          guarantor_name: guarantorName.trim(), guarantor_phone: guarantorPhone.trim(), guarantor_relationship: guarantorRelationship.trim(), is_verified: false,
+        });
+        if (profileError) throw profileError;
         navigate("/");
       } else {
         markEmailVerificationPending();
@@ -74,7 +91,7 @@ export default function SignupEntrepreneur() {
       )}
 
       <div className="page-shell flex min-h-[calc(100vh-4rem)] items-center justify-center py-12"><div className="surface-card w-full max-w-md p-6 sm:p-8">
-        <p className="eyebrow">Seller account</p><h1 className="mt-2 page-title text-2xl">Set up your campus business</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">Create your profile now; verification and listings can be completed from your seller workspace.</p>
+        <p className="eyebrow">Entrepreneur account</p><h1 className="mt-2 page-title text-2xl">Set up your marketplace business</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">Create your profile and provide a guarantor for seller verification.</p>
 
         {error && (
           <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
@@ -105,11 +122,13 @@ export default function SignupEntrepreneur() {
             required
           />
 
-          <label className="field-label" htmlFor="entrepreneur-address">Campus location</label><Input id="entrepreneur-address"
+          <label className="field-label" htmlFor="entrepreneur-address">Street / business address <span className="font-normal text-muted-foreground">(optional)</span></label><Input id="entrepreneur-address"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            required
           />
+          <div className="rounded-xl border border-brand-orange/30 bg-orange-50 px-4 py-3 text-sm text-brand-navy">Currently live in Maiduguri, Borno State (expanding to more cities soon).</div>
+          <div className="grid grid-cols-2 gap-3"><MaiduguriAreaField id="entrepreneur-city" value={city} onChange={setCity} /><div><label className="field-label" htmlFor="entrepreneur-state">State · Borno launch region</label><select id="entrepreneur-state" value={state} onChange={(e) => setState(e.target.value)} className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm"><option>Borno</option>{["Abia","Adamawa","Akwa Ibom","Anambra","Bauchi","Bayelsa","Benue","Cross River","Delta","Ebonyi","Edo","Ekiti","Enugu","FCT","Gombe","Imo","Jigawa","Kaduna","Kano","Katsina","Kebbi","Kogi","Kwara","Lagos","Nasarawa","Niger","Ogun","Ondo","Osun","Oyo","Plateau","Rivers","Sokoto","Taraba","Yobe","Zamfara"].map((item) => <option key={item} value={item}>{item} — Coming Soon</option>)}</select></div></div>
+          <fieldset className="space-y-3 rounded-xl border border-border p-4"><legend className="px-2 text-sm font-semibold">Guarantor information <span className="text-red-600">Required</span></legend><label className="field-label" htmlFor="guarantor-name">Full name</label><Input id="guarantor-name" value={guarantorName} onChange={(e) => setGuarantorName(e.target.value)} required /><label className="field-label" htmlFor="guarantor-phone">Phone number</label><Input id="guarantor-phone" type="tel" value={guarantorPhone} onChange={(e) => setGuarantorPhone(e.target.value)} pattern="\+?[0-9\s()-]{10,16}" required /><label className="field-label" htmlFor="guarantor-relationship">Relationship</label><select id="guarantor-relationship" value={guarantorRelationship} onChange={(e) => setGuarantorRelationship(e.target.value)} className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm" required><option value="">Select relationship</option>{["Parent","Relative","Employer","Mentor","Business Associate","Other"].map((item) => <option key={item}>{item}</option>)}</select></fieldset>
 
           <label className="field-label" htmlFor="entrepreneur-password">Password</label><div className="relative"><Input id="entrepreneur-password"
             type={showPassword ? "text" : "password"}

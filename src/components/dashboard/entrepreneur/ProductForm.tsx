@@ -20,6 +20,7 @@ type ProductRow = {
   stock_quantity: number;
   status: ProductStatus;
   image_url: string | null;
+  images?: string[] | null;
 };
 
 function errorMessage(error: unknown, fallback: string) {
@@ -41,7 +42,8 @@ export default function ProductForm() {
   const [price, setPrice] = useState("");
   const [stockQuantity, setStockQuantity] = useState("0");
   const [status, setStatus] = useState<ProductStatus>("draft");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [existingImages, setExistingImages] = useState<string[]>([]);
   const [existingImageUrl, setExistingImageUrl] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -64,7 +66,7 @@ export default function ProductForm() {
         if (id) {
           const productResult = await supabase
             .from("products")
-            .select("id, vendor_id, title, slug, category_id, description, price_kobo, stock_quantity, status, image_url")
+            .select("id, vendor_id, title, slug, category_id, description, price_kobo, stock_quantity, status, image_url, images")
             .eq("id", id)
             .eq("vendor_id", vendorStore.id)
             .maybeSingle();
@@ -81,6 +83,7 @@ export default function ProductForm() {
             setStockQuantity(String(product.stock_quantity));
             setStatus(product.status);
             setExistingImageUrl(product.image_url || "");
+            setExistingImages(product.images?.length ? product.images : product.image_url ? [product.image_url] : []);
           }
         }
       } catch (loadError: unknown) {
@@ -110,14 +113,12 @@ export default function ProductForm() {
     }
 
     setSaving(true);
-    let uploadedImagePath: string | null = null;
+    const uploadedImagePaths: string[] = [];
     try {
-      let imageUrl = existingImageUrl || null;
-      if (file) {
-        const upload = await uploadProductImage(user.id, file);
-        uploadedImagePath = upload.path;
-        imageUrl = upload.publicUrl;
-      }
+      const uploaded = await Promise.all(files.map((file) => uploadProductImage(user.id, file)));
+      uploadedImagePaths.push(...uploaded.map((image) => image.path));
+      const images = [...existingImages, ...uploaded.map((image) => image.publicUrl)];
+      const imageUrl = images[0] || existingImageUrl || null;
 
       const productPayload = {
         vendor_id: vendorStore.id,
@@ -129,6 +130,7 @@ export default function ProductForm() {
         stock_quantity: Math.max(0, Math.floor(Number(stockQuantity) || 0)),
         status,
         image_url: imageUrl,
+        images,
       };
 
       if (id) {
@@ -142,7 +144,7 @@ export default function ProductForm() {
       toast.success(editing ? "Product updated." : "Product saved.");
       navigate("/dashboard/entrepreneur/products");
     } catch (saveError: unknown) {
-      if (uploadedImagePath) await removeProductImage(uploadedImagePath);
+      await Promise.all(uploadedImagePaths.map(removeProductImage));
       const message = errorMessage(saveError, "Could not save product.");
       console.error("Could not save product:", saveError);
       setError(message);
@@ -169,8 +171,8 @@ export default function ProductForm() {
         <div><label className="field-label" htmlFor="product-description">Description</label><textarea id="product-description" value={description} onChange={(event) => setDescription(event.target.value)} rows={5} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" /></div>
         <div>
           <div className="flex items-center justify-between"><div><label className="field-label mb-0" htmlFor="product-images">Product image</label><p className="field-help">JPG, PNG, or WEBP · max 5MB · stored in Supabase Storage</p></div><ImagePlus className="h-5 w-5 text-brand-orange" /></div>
-          {(file || existingImageUrl) && <div className="mt-3 flex items-center gap-3 rounded-lg border border-border p-3"><div className="h-16 w-16 overflow-hidden rounded-md bg-muted">{file ? <span className="flex h-full items-center justify-center p-2 text-center text-[10px]">{file.name}</span> : <img src={existingImageUrl} alt="Current product" className="h-full w-full object-cover" />}</div><p className="text-xs text-muted-foreground">{file ? file.name : "Current image"}</p></div>}
-          <Input id="product-images" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => setFile(event.target.files?.[0] || null)} className="mt-3" />
+          {(existingImages.length > 0 || files.length > 0) && <div className="mt-3 flex flex-wrap gap-3">{existingImages.map((image, index) => <div key={image} className="h-16 w-16 overflow-hidden rounded-md bg-muted"><img src={image} alt={`Current product photo ${index + 1}`} className="h-full w-full object-cover" /></div>)}{files.map((image) => <div key={`${image.name}-${image.lastModified}`} className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-md bg-muted p-1 text-center text-[10px]">{image.name}</div>)}</div>}
+          <Input id="product-images" type="file" multiple accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => setFiles(Array.from(event.target.files || []))} className="mt-3" />
         </div>
         <div className="flex justify-end"><Button type="submit" variant="hero" disabled={saving}>{saving && <Loader2 className="animate-spin" />}{saving ? "Saving..." : editing ? "Save changes" : "Save product"}</Button></div>
       </form>
